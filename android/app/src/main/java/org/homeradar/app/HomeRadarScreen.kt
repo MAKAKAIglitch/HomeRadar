@@ -154,7 +154,7 @@ fun HomeRadarScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(state.networks) { network ->
-                            WifiNetworkCard(network)
+                            WifiNetworkCard(network, state.lastReceivedAtNs)
                         }
                     }
                 }
@@ -168,7 +168,7 @@ fun HomeRadarScreen(
 }
 
 @Composable
-private fun WifiNetworkCard(network: WifiNetworkRow) {
+private fun WifiNetworkCard(network: WifiNetworkRow, receivedAtNs: Long?) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(14.dp),
