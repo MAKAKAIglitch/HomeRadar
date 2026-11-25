@@ -1,6 +1,9 @@
 package org.homeradar.app
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,77 +20,66 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import kotlin.math.min
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeRadarScreen(
     state: WifiScanUiState,
-    onScanClick: () -> Unit
+    onScanClick: () -> Unit,
+    onRouteClick: () -> Unit
 ) {
-    MaterialTheme {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Column {
-                            Text("HomeRadar")
-                            Text(
-                                "Локальное картирование Wi-Fi",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                )
-            }
-        ) { padding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Text("Wi-Fi Scanner", style = MaterialTheme.typography.titleLarge)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text("HomeRadar")
                         Text(
-                            state.status,
-                            style = MaterialTheme.typography.bodyMedium,
+                            "Карта Wi-Fi по маршруту",
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Button(onClick = onScanClick) {
-                                Text(if (state.hasPermission) "Сканировать" else "Разрешить и сканировать")
-                            }
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                if (state.resultsFresh) "Обновлено" else "Не подтверждено",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (state.resultsFresh) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
                     }
                 }
-
+            )
+        }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                RouteControlCard(state, onRouteClick)
+            }
+            item {
+                RouteMapCard(state)
+            }
+            item {
+                WifiScannerCard(state, onScanClick)
+            }
+            item {
+                MotionDiagnosticsCard(state)
+            }
+            item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -100,68 +92,295 @@ fun HomeRadarScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(
-                        modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text("Датчики движения", style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            if (state.availableMotionSensors.isEmpty()) "Поддерживаемые датчики не обнаружены"
-                            else state.availableMotionSensors.joinToString(" · "),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            "Получено событий: ${state.motionSampleCount}" +
-                                (state.lastMotionSensor?.let { " · последнее: $it" } ?: ""),
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                        if (state.lastMotionValues.isNotEmpty()) {
-                            Text(
-                                "Последние значения: " + state.lastMotionValues.joinToString { "%.2f".format(it) },
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-
-                if (state.networks.isEmpty()) {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerLow
-                    ) {
+            }
+            if (state.networks.isEmpty()) {
+                item {
+                    Card(modifier = Modifier.fillMaxWidth()) {
                         Column(
-                            modifier = Modifier.padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            modifier = Modifier.padding(18.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Text("Пока нет результатов", style = MaterialTheme.typography.titleMedium)
-                            Spacer(Modifier.height(6.dp))
                             Text(
-                                "Запроси сканирование. Android может ограничивать частоту обновлений и возвращать кэшированные результаты.",
+                                "Запроси Wi-Fi-сканирование. Android может ограничивать частоту обновлений и возвращать кэшированные результаты.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(bottom = 20.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(state.networks) { network ->
-                            WifiNetworkCard(network, state.lastReceivedAtNs)
+                }
+            } else {
+                items(
+                    items = state.networks,
+                    key = { "${it.bssid}:${it.frequencyMhz}" }
+                ) { network ->
+                    WifiNetworkCard(network, state.lastReceivedAtNs)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RouteControlCard(
+    state: WifiScanUiState,
+    onRouteClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Запись прохода", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    if (state.isRecording) "Идёт запись" else "Остановлено",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (state.isRecording) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                state.routeStatus,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Button(onClick = onRouteClick) {
+                    Text(if (state.isRecording) "Завершить проход" else "Начать проход")
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        "${state.routeSteps} шагов",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Text(
+                        "≈ ${"%.1f".format(state.routeDistanceMeters)} м",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Text(
+                "Это пока PDR-оценка: длина шага принята за 0,68 м. Ошибка накапливается; камера и AR-трекинг ещё не подключены.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun RouteMapCard(state: WifiScanUiState) {
+    val colors = MaterialTheme.colorScheme
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Траектория", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "${state.wifiMarkers.size} Wi-Fi",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.onSurfaceVariant
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(280.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(colors.surfaceContainerLow)
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val gridColor = colors.outlineVariant.copy(alpha = 0.45f)
+                    for (index in 1..4) {
+                        val x = size.width * index / 5f
+                        val y = size.height * index / 5f
+                        drawLine(gridColor, Offset(x, 0f), Offset(x, size.height), 1.dp.toPx())
+                        drawLine(gridColor, Offset(0f, y), Offset(size.width, y), 1.dp.toPx())
+                    }
+
+                    val routeX = state.routePoints.map { it.xMeters }
+                    val routeY = state.routePoints.map { it.yMeters }
+                    val markerX = state.wifiMarkers.map { it.xMeters }
+                    val markerY = state.wifiMarkers.map { it.yMeters }
+                    val allX = routeX + markerX
+                    val allY = routeY + markerY
+
+                    if (allX.isNotEmpty() && allY.isNotEmpty()) {
+                        val minX = allX.minOrNull() ?: 0.0
+                        val maxX = allX.maxOrNull() ?: 1.0
+                        val minY = allY.minOrNull() ?: 0.0
+                        val maxY = allY.maxOrNull() ?: 1.0
+                        val rangeX = (maxX - minX).coerceAtLeast(0.8)
+                        val rangeY = (maxY - minY).coerceAtLeast(0.8)
+                        val margin = 28.dp.toPx()
+                        val usableWidth = (size.width - margin * 2f).coerceAtLeast(1f)
+                        val usableHeight = (size.height - margin * 2f).coerceAtLeast(1f)
+                        val scale = min(
+                            usableWidth / rangeX.toFloat(),
+                            usableHeight / rangeY.toFloat()
+                        )
+                        val drawnWidth = rangeX.toFloat() * scale
+                        val drawnHeight = rangeY.toFloat() * scale
+                        val left = (size.width - drawnWidth) / 2f
+                        val top = (size.height - drawnHeight) / 2f
+
+                        fun project(x: Double, y: Double): Offset = Offset(
+                            x = left + (x - minX).toFloat() * scale,
+                            y = top + (maxY - y).toFloat() * scale
+                        )
+
+                        val routePath = Path()
+                        state.routePoints.forEachIndexed { index, point ->
+                            val position = project(point.xMeters, point.yMeters)
+                            if (index == 0) routePath.moveTo(position.x, position.y)
+                            else routePath.lineTo(position.x, position.y)
+                        }
+                        if (state.routePoints.size > 1) {
+                            drawPath(
+                                path = routePath,
+                                color = colors.primary,
+                                style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
+                            )
+                        }
+
+                        state.wifiMarkers.forEach { marker ->
+                            val signalColor = when {
+                                marker.rssiDbm >= -55 -> colors.tertiary
+                                marker.rssiDbm >= -67 -> colors.primary
+                                marker.rssiDbm >= -80 -> colors.secondary
+                                else -> colors.error
+                            }
+                            drawCircle(
+                                color = signalColor.copy(alpha = 0.88f),
+                                radius = 7.dp.toPx(),
+                                center = project(marker.xMeters, marker.yMeters)
+                            )
+                        }
+
+                        state.routePoints.firstOrNull()?.let { start ->
+                            drawCircle(
+                                color = colors.tertiary,
+                                radius = 7.dp.toPx(),
+                                center = project(start.xMeters, start.yMeters)
+                            )
+                        }
+                        state.routePoints.lastOrNull()?.let { end ->
+                            drawCircle(
+                                color = colors.primary,
+                                radius = 5.dp.toPx(),
+                                center = project(end.xMeters, end.yMeters)
+                            )
                         }
                     }
                 }
 
-                if (state.networks.isEmpty()) {
-                    Spacer(Modifier.height(8.dp))
+                if (state.routePoints.isEmpty()) {
+                    Text(
+                        "Здесь появится линия твоего прохода",
+                        modifier = Modifier.align(Alignment.Center),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurfaceVariant
+                    )
                 }
+            }
+
+            Text(
+                "Точки окрашены по уровню сигнала: сильный → слабый. Пустые участки не интерполируются.",
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.onSurfaceVariant
+            )
+            if (state.unmappedWifiSamples > 0) {
+                Text(
+                    "Не привязано к маршруту: ${state.unmappedWifiSamples} измерений (не хватило временных данных).",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WifiScannerCard(
+    state: WifiScanUiState,
+    onScanClick: () -> Unit
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("Wi-Fi Scanner", style = MaterialTheme.typography.titleMedium)
+            Text(
+                state.status,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(onClick = onScanClick) {
+                    Text(if (state.hasPermission) "Сканировать Wi-Fi" else "Разрешить Wi-Fi")
+                }
+                Text(
+                    if (state.resultsFresh) "Обновлено" else "Не подтверждено",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (state.resultsFresh) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MotionDiagnosticsCard(state: WifiScanUiState) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text("Датчики движения", style = MaterialTheme.typography.titleSmall)
+            Text(
+                if (state.availableMotionSensors.isEmpty()) "Поддерживаемые датчики не обнаружены"
+                else state.availableMotionSensors.joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                "Получено событий: ${state.motionSampleCount}" +
+                    (state.lastMotionSensor?.let { " · последнее: $it" } ?: ""),
+                style = MaterialTheme.typography.labelSmall
+            )
+            if (state.lastMotionValues.isNotEmpty()) {
+                Text(
+                    "Последние значения: " + state.lastMotionValues.joinToString { "%.2f".format(it) },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
