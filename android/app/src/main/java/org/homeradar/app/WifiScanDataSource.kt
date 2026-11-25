@@ -41,7 +41,10 @@ data class WifiScanUiState(
     val status: String = "Сканирование ещё не запускалось.",
     val networks: List<WifiNetworkRow> = emptyList(),
     val resultsFresh: Boolean = false,
-    val lastReceivedAtNs: Long? = null
+    val lastReceivedAtNs: Long? = null,
+    val availableMotionSensors: List<String> = emptyList(),
+    val motionSampleCount: Long = 0L,
+    val lastMotionSensor: String? = null
 )
 
 class WifiScanDataSource(
