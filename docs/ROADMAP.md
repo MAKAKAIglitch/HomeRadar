@@ -17,8 +17,8 @@ This roadmap defines a sequence of deliverable milestones. It is a plan, not a c
 
 - [x] Create initial Rust workspace and core crate.
 - [x] Define initial monotonic timestamps, local 2D pose and quality types.
-- [x] Define initial Wi-Fi observation type and conservative SSID display grouping.\n- [ ] Expand to explicit BSSID, radio, access-point, and network-group entities.
-- [x] Add input validation and unit tests for timestamps, trajectory gaps, tracking loss, RSSI aggregation and SSID grouping.\n- [ ] Add serialization tests when the storage format is implemented.
+- [x] Define initial Wi-Fi observation type, frequency-band classification and conservative SSID display grouping.\n- [ ] Expand to explicit BSSID, radio, access-point, and network-group entities.
+- [x] Add input validation and unit tests for timestamps, trajectory gaps, tracking loss, pose interpolation, Wi-Fi bands, RSSI aggregation and SSID grouping.\n- [ ] Add serialization tests when the storage format is implemented.
 - [x] Add synthetic unit-test observations without real home/network information.
 
 **Status:** initial standard-library-only core is implemented. Run `cd core && cargo test --workspace` locally; CI/host compilation has not yet been run in this environment. Serialization and the Android bridge remain open.
@@ -49,7 +49,7 @@ This roadmap defines a sequence of deliverable milestones. It is a plan, not a c
 - [ ] Add ARCore tracking adapter where supported.
 - [ ] Add tracking quality, pose timestamps and relocalization events.
 - [ ] Add IMU/PDR fallback with explicit drift warnings.
-- [ ] Implement pose interpolation for asynchronous Wi-Fi observations.
+- [x] Implement bounded pose interpolation for asynchronous Wi-Fi observations; reject interpolation across gaps or tracking loss.
 - [ ] Draw and save the path on a blank 2D canvas.
 - [ ] Add manual origin/reset and optional calibration anchors.
 
