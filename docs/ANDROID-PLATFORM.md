@@ -43,3 +43,10 @@ Expose a diagnostics page listing:
 - current recording limitations.
 
 Do not upload this report automatically.
+
+
+## Current scanner implementation notes
+
+The initial Android scanner registers for `WifiManager.SCAN_RESULTS_AVAILABLE_ACTION` while the activity is started. On Android 13+, it uses `RECEIVER_EXPORTED` so privileged system components can deliver the Wi-Fi broadcast. The receiver then queries `WifiManager.scanResults`; it does not trust scan details embedded in the broadcast.
+
+The app requests `ACCESS_FINE_LOCATION` at runtime before requesting or reading scan results. Scan requests remain best-effort because Android can throttle or reject them.
