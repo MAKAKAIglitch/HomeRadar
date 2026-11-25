@@ -29,7 +29,7 @@ if [[ ! -f "${ANDROID_HOME}/platforms/android-37/android.jar" ]]; then
   exit 1
 fi
 
-if command -v gradle >/dev/null 2>&1 && gradle --version 2>/dev/null | grep -q "Gradle ${GRADLE_VERSION}"; then
+if command -v gradle >/dev/null 2>&1 && gradle --version 2>/dev/null | grep -Eq "^Gradle ${GRADLE_VERSION//./\\.}$"; then
   GRADLE_BIN="$(command -v gradle)"
 else
   GRADLE_BIN="${GRADLE_HOME}/bin/gradle"
