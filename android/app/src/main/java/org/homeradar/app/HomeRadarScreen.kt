@@ -118,6 +118,13 @@ fun HomeRadarScreen(
                                 (state.lastMotionSensor?.let { " · последнее: $it" } ?: ""),
                             style = MaterialTheme.typography.labelSmall
                         )
+                        if (state.lastMotionValues.isNotEmpty()) {
+                            Text(
+                                "Последние значения: " + state.lastMotionValues.joinToString { "%.2f".format(it) },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
 
