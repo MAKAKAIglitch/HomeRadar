@@ -22,6 +22,21 @@ class MainActivity : ComponentActivity() {
     private var activeSessionId: Long? = null
     private var persistedRoutePointCount = 0
     private var isCreatingSession = false
+    private var pendingExportSessionId: Long? = null
+
+    private val exportDocument = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri ->
+        val sessionId = pendingExportSessionId
+        pendingExportSessionId = null
+        if (uri != null && sessionId != null) exportSessionToUri(sessionId, uri)
+    }
+
+    private val importDocument = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) importSessionFromUri(uri)
+    }
 
     private val locationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -80,7 +95,9 @@ class MainActivity : ComponentActivity() {
                     state = screenState.value,
                     onScanClick = ::requestScan,
                     onRouteClick = ::toggleRoute,
-                    onOpenSession = ::openSavedSession
+                    onOpenSession = ::openSavedSession,
+                    onExportSession = ::exportSession,
+                    onImportSession = ::launchImportSession
                 )
             }
         }
@@ -380,6 +397,67 @@ class MainActivity : ComponentActivity() {
                         screenState.value = screenState.value.copy(savedSessions = sessions)
                     }
                 }
+        }
+    }
+
+    private fun exportSession(sessionId: Long) {
+        if (screenState.value.isRecording) return
+        pendingExportSessionId = sessionId
+        exportDocument.launch("homeradar-session-$sessionId.homeradar")
+    }
+
+    private fun exportSessionToUri(sessionId: Long, uri: android.net.Uri) {
+        databaseExecutor.execute {
+            runCatching {
+                val stored = sessionDatabase.loadSession(sessionId)
+                    ?: throw IllegalArgumentException("Проход не найден.")
+                val output = contentResolver.openOutputStream(uri)
+                    ?: throw IllegalStateException("Не удалось открыть файл для записи.")
+                output.use { HomeRadarArchive.write(it, stored) }
+            }.onSuccess {
+                runOnUiThread {
+                    screenState.value = screenState.value.copy(
+                        storageStatus = "Проход экспортирован в файл .homeradar."
+                    )
+                }
+            }.onFailure { error ->
+                runOnUiThread {
+                    screenState.value = screenState.value.copy(
+                        storageStatus = "Ошибка экспорта: ${error.message ?: error.javaClass.simpleName}"
+                    )
+                }
+            }
+        }
+    }
+
+    private fun launchImportSession() {
+        if (screenState.value.isRecording) return
+        importDocument.launch(arrayOf("application/zip", "application/octet-stream"))
+    }
+
+    private fun importSessionFromUri(uri: android.net.Uri) {
+        if (screenState.value.isRecording) return
+        databaseExecutor.execute {
+            runCatching {
+                val input = contentResolver.openInputStream(uri)
+                    ?: throw IllegalStateException("Не удалось открыть выбранный файл.")
+                val payload = input.use(HomeRadarArchive::read)
+                val importedId = sessionDatabase.importSession(payload)
+                importedId to sessionDatabase.listSessions()
+            }.onSuccess { (importedId, sessions) ->
+                runOnUiThread {
+                    screenState.value = screenState.value.copy(
+                        savedSessions = sessions,
+                        storageStatus = "Импортирован проход #$importedId. Исходный файл не изменён."
+                    )
+                }
+            }.onFailure { error ->
+                runOnUiThread {
+                    screenState.value = screenState.value.copy(
+                        storageStatus = "Ошибка импорта: ${error.message ?: error.javaClass.simpleName}"
+                    )
+                }
+            }
         }
     }
 
