@@ -23,6 +23,16 @@ pub struct TrajectoryPoint {
     pub segment_index: u32,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct InterpolatedPose {
+    pub timestamp: TimestampNs,
+    pub position_m: Vec2,
+    pub heading_rad: f64,
+    pub quality: PositionQuality,
+    /// False for an exact recorded pose; true for interpolation between two poses.
+    pub interpolated: bool,
+}
+
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Trajectory {
     points: Vec<TrajectoryPoint>,
@@ -55,6 +65,64 @@ impl Trajectory {
             .filter(|pair| pair[0].segment_index == pair[1].segment_index)
             .map(|pair| pair[0].position_m.distance(pair[1].position_m))
             .sum()
+    }
+
+    /// Returns a pose at an observation timestamp only when it is exactly
+    /// recorded or safely bracketed by two points in the same trajectory segment.
+    /// This deliberately performs no extrapolation across gaps or tracking loss.
+    pub fn pose_at(
+        &self,
+        timestamp: TimestampNs,
+        max_bracket_gap_ns: u64,
+    ) -> Option<InterpolatedPose> {
+        if let Some(point) = self.points.iter().find(|point| point.timestamp == timestamp) {
+            return Some(InterpolatedPose {
+                timestamp,
+                position_m: point.position_m,
+                heading_rad: point.heading_rad,
+                quality: point.quality,
+                interpolated: false,
+            });
+        }
+
+        for pair in self.points.windows(2) {
+            let left = pair[0];
+            let right = pair[1];
+            if timestamp <= left.timestamp || timestamp >= right.timestamp {
+                continue;
+            }
+            if left.segment_index != right.segment_index {
+                return None;
+            }
+
+            let span = right.timestamp.0.saturating_sub(left.timestamp.0);
+            if span == 0 || span > max_bracket_gap_ns {
+                return None;
+            }
+
+            let offset = timestamp.0.saturating_sub(left.timestamp.0);
+            let t = offset as f64 / span as f64;
+            let angle_delta = (right.heading_rad - left.heading_rad + std::f64::consts::PI)
+                .rem_euclid(std::f64::consts::TAU)
+                - std::f64::consts::PI;
+            let heading = left.heading_rad + angle_delta * t;
+            let quality = if left.quality == PositionQuality::Tracked
+                && right.quality == PositionQuality::Tracked
+            {
+                PositionQuality::Tracked
+            } else {
+                PositionQuality::Estimated
+            };
+
+            return Some(InterpolatedPose {
+                timestamp,
+                position_m: left.position_m.lerp(right.position_m, t),
+                heading_rad: heading,
+                quality,
+                interpolated: true,
+            });
+        }
+        None
     }
 
     /// Adds a pose. Lost tracking creates a discontinuity and is never drawn
@@ -181,5 +249,25 @@ mod tests {
             track.push(pose(10, 1.0, PositionQuality::Tracked)),
             Err(TrajectoryError::NonMonotonicTimestamp { .. })
         ));
+    }
+
+    #[test]
+    fn interpolates_wifi_time_between_two_valid_poses() {
+        let mut track = Trajectory::default();
+        track.push(pose(1_000, 0.0, PositionQuality::Tracked)).unwrap();
+        track.push(pose(2_000, 10.0, PositionQuality::Tracked)).unwrap();
+        let at = track.pose_at(TimestampNs(1_500), 1_500).unwrap();
+        assert!(at.interpolated);
+        assert_eq!(at.position_m, Vec2::new(5.0, 0.0));
+        assert_eq!(at.quality, PositionQuality::Tracked);
+    }
+
+    #[test]
+    fn refuses_interpolation_across_tracking_gap() {
+        let mut track = Trajectory::default();
+        track.push(pose(1_000, 0.0, PositionQuality::Tracked)).unwrap();
+        track.push(pose(1_500, 0.0, PositionQuality::Lost)).unwrap();
+        track.push(pose(2_000, 10.0, PositionQuality::Tracked)).unwrap();
+        assert!(track.pose_at(TimestampNs(1_750), 2_000).is_none());
     }
 }
