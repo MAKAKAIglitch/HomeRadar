@@ -74,7 +74,8 @@ class WifiScanDataSource(
         val filter = IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
 
         if (Build.VERSION.SDK_INT >= 33) {
-            // This is a system/privileged Wi-Fi broadcast; EXPORTED allows delivery from system components.\n            appContext.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
+            // This is a system/privileged Wi-Fi broadcast; EXPORTED allows delivery from system components.
+            appContext.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
         } else {
             @Suppress("DEPRECATION")
             appContext.registerReceiver(receiver, filter)
