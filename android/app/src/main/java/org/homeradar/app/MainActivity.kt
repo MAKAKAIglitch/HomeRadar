@@ -52,6 +52,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        screenState.value = screenState.value.copy(hasPermission = hasLocationPermission())
         wifiScanner.register()
     }
 
