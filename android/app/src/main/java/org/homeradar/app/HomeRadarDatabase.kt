@@ -248,8 +248,8 @@ class HomeRadarDatabase(context: Context) : SQLiteOpenHelper(
                 while (cursor.moveToNext()) {
                     add(
                         RoutePoint(
-                            xMeters = cursor.getDouble(2),
-                            yMeters = cursor.getDouble(1),
+                            xMeters = cursor.getDouble(1),
+                            yMeters = cursor.getDouble(2),
                             timestampNs = cursor.getLong(0)
                         )
                     )
