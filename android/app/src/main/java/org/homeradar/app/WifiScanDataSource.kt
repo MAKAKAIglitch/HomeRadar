@@ -54,7 +54,8 @@ data class WifiScanUiState(
     val wifiMarkers: List<WifiRouteMarker> = emptyList(),
     val unmappedWifiSamples: Int = 0,
     val savedSessions: List<SavedSessionSummary> = emptyList(),
-    val selectedSessionId: Long? = null
+    val selectedSessionId: Long? = null,
+    val storageStatus: String? = null
 )
 
 class WifiScanDataSource(
