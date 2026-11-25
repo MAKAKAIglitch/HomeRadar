@@ -26,8 +26,18 @@ if ([string]::IsNullOrWhiteSpace($SdkRoot)) {
 $env:ANDROID_HOME = $SdkRoot
 $env:ANDROID_SDK_ROOT = $SdkRoot
 
-if (-not (Test-Path (Join-Path $SdkRoot 'platforms\android-37\android.jar'))) {
-    throw "Android SDK Platform 37 is missing. Install it with sdkmanager 'platforms;android-37'."
+$Platform37 = Join-Path $SdkRoot 'platforms\android-37'
+$Platform370 = Join-Path $SdkRoot 'platforms\android-37.0'
+if (-not (Test-Path (Join-Path $Platform37 'android.jar'))) {
+    if (Test-Path (Join-Path $Platform370 'android.jar')) {
+        # AGP resolves compileSdk = 37 through the android-37 directory name.
+        if (-not (Test-Path $Platform37)) {
+            New-Item -ItemType Junction -Path $Platform37 -Target $Platform370 | Out-Null
+        }
+    }
+    else {
+        throw "Android SDK Platform 37.0 is missing. Install it with sdkmanager 'platforms;android-37.0'."
+    }
 }
 
 $SystemGradle = Get-Command gradle -ErrorAction SilentlyContinue
