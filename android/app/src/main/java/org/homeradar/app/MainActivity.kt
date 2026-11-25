@@ -21,6 +21,7 @@ class MainActivity : ComponentActivity() {
 
     private var activeSessionId: Long? = null
     private var persistedRoutePointCount = 0
+    private var isCreatingSession = false
 
     private val locationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -226,6 +227,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startRoute() {
+        if (isCreatingSession) {
+            screenState.value = screenState.value.copy(
+                routeStatus = "Предыдущая сессия ещё создаётся в локальной базе."
+            )
+            return
+        }
         activeSessionId = null
         persistedRoutePointCount = 0
         mappedMarkerIds.clear()
@@ -240,11 +247,14 @@ class MainActivity : ComponentActivity() {
         )
 
         if (!motionSensors.startRoute()) return
+        isCreatingSession = true
 
         databaseExecutor.execute {
             runCatching { sessionDatabase.createSession() }
                 .onSuccess { sessionId ->
                     runOnUiThread {
+                        if (isDestroyed || databaseExecutor.isShutdown) return@runOnUiThread
+                        isCreatingSession = false
                         activeSessionId = sessionId
                         persistedRoutePointCount = 0
                         val current = screenState.value
@@ -276,6 +286,8 @@ class MainActivity : ComponentActivity() {
                 }
                 .onFailure { error ->
                     runOnUiThread {
+                        isCreatingSession = false
+                        if (isDestroyed || databaseExecutor.isShutdown) return@runOnUiThread
                         motionSensors.stopRoute()
                         screenState.value = screenState.value.copy(
                             routeStatus = "Не удалось создать сессию: ${error.javaClass.simpleName}"
