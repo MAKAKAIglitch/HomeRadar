@@ -51,6 +51,7 @@ class WifiScanDataSource(
     private val appContext = context.applicationContext
     private val wifiManager = appContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
     private var registered = false
+    private var lastRows: List<WifiNetworkRow> = emptyList()
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -116,6 +117,7 @@ class WifiScanDataSource(
             val rows = wifiManager.scanResults
                 .map(::toRow)
                 .sortedByDescending { it.rssiDbm }
+            lastRows = rows
 
             onSnapshot(
                 WifiScanSnapshot(
@@ -153,7 +155,7 @@ class WifiScanDataSource(
         onSnapshot(
             WifiScanSnapshot(
                 status = message,
-                networks = emptyList(),
+                networks = lastRows,
                 resultsFresh = false,
                 receivedAtNs = SystemClock.elapsedRealtimeNanos()
             )
