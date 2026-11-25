@@ -10,7 +10,8 @@ data class MotionSensorSnapshot(
     val availableSensors: List<String> = emptyList(),
     val receivedSampleCount: Long = 0L,
     val lastSensorName: String? = null,
-    val lastTimestampNs: Long? = null
+    val lastTimestampNs: Long? = null,
+    val lastValues: List<Float> = emptyList()
 )
 
 class MotionSensorDataSource(
@@ -33,6 +34,7 @@ class MotionSensorDataSource(
     private var lastPublishedTimestampNs = 0L
     private var lastSensorName: String? = null
     private var lastTimestampNs: Long? = null
+    private var lastValues: List<Float> = emptyList()
 
     fun register() {
         if (registered) return
@@ -53,6 +55,7 @@ class MotionSensorDataSource(
         sampleCount += 1
         lastSensorName = event.sensor.name
         lastTimestampNs = event.timestamp
+        lastValues = event.values.toList()
 
         // Bound UI updates; raw event persistence will be added with sessions.
         if (event.timestamp - lastPublishedTimestampNs >= 250_000_000L) {
@@ -69,7 +72,8 @@ class MotionSensorDataSource(
                 availableSensors = sensors.map { it.name },
                 receivedSampleCount = sampleCount,
                 lastSensorName = lastSensorName,
-                lastTimestampNs = lastTimestampNs
+                lastTimestampNs = lastTimestampNs,
+                lastValues = lastValues
             )
         )
     }
