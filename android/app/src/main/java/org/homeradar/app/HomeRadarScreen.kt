@@ -180,6 +180,16 @@ private fun WifiNetworkCard(network: WifiNetworkRow, receivedAtNs: Long?) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            val ageSeconds = receivedAtNs?.let { received ->
+                network.measuredAtNs?.let { measured ->
+                    (received - measured).takeIf { it >= 0L }?.div(1_000_000_000L)
+                }
+            }
+            Text(
+                ageSeconds?.let { "Измерено $it с назад" } ?: "Время измерения недоступно",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
