@@ -30,7 +30,7 @@ This roadmap defines a sequence of deliverable milestones. It is a plan, not a c
 - [x] Create initial Kotlin Android app using Jetpack Compose and Material 3.
 - [x] Implement initial fine-location permission request and Activity receiver lifecycle.
 - [x] Collect Wi-Fi scan results and scan-result update events; distinguish updated from stale/cached results.
-- [ ] Collect accelerometer, gyroscope, rotation-vector and step-counter data when available.
+- [x] Receive accelerometer, gyroscope, rotation-vector, linear-acceleration and pressure sensor events when available (diagnostic stream; raw persistence remains open).
 - [x] Preserve ScanResult measurement timestamp separately from receive time in the Android acquisition model.
 - [x] Show observed SSID/BSSID, RSSI, frequency band and freshness status in the initial Material 3 screen.
 
