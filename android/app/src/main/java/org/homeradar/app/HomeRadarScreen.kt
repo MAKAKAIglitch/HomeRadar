@@ -101,6 +101,26 @@ fun HomeRadarScreen(
                     )
                 }
 
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text("Датчики движения", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            if (state.availableMotionSensors.isEmpty()) "Поддерживаемые датчики не обнаружены"
+                            else state.availableMotionSensors.joinToString(" · "),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "Получено событий: ${state.motionSampleCount}" +
+                                (state.lastMotionSensor?.let { " · последнее: $it" } ?: ""),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
+
                 if (state.networks.isEmpty()) {
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
