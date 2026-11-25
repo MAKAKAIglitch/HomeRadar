@@ -357,15 +357,20 @@ private fun SavedSessionsCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("Сохранённые проходы", style = MaterialTheme.typography.titleMedium)
-                OutlinedButton(onClick = onImportSession, enabled = !state.isRecording) {
-                    Text("Импорт")
-                }
                 Text(
                     state.savedSessions.size.toString(),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            OutlinedButton(onClick = onImportSession, enabled = !state.isRecording) {
+                Text("Импортировать .homeradar")
+            }
+            Text(
+                "Архив включает SSID/BSSID и координаты локального маршрута. Проверяй файл перед отправкой.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             if (state.savedSessions.isEmpty()) {
                 Text(
