@@ -39,11 +39,13 @@ This roadmap defines a sequence of deliverable milestones. It is a plan, not a c
 
 ## Phase 3 — Session format and persistence
 
-- [ ] Implement SQLite schema and migrations.
-- [ ] Store raw observations separately from derived data.
-- [ ] Implement session start, pause, resume, finish and recovery.
+- [x] Implement initial versioned SQLite schema for sessions, route points and mapped Wi-Fi samples (migration paths are added with future schema versions).
+- [ ] Store the full raw IMU stream separately from derived route points.
+- [x] Implement session start, finish and recovery of interrupted sessions; pause/resume remains open.
 - [ ] Implement versioned `.homeradar` archive import/export.
 - [ ] Add corruption and compatibility tests.
+
+**Status:** route points and Wi-Fi samples are persisted locally, saved passes are listed and can be reopened on the route canvas, and incomplete sessions are marked interrupted at next startup. Raw IMU streams, pause/resume and archive import/export remain open.
 
 **Exit criteria:** a recorded session survives app restart and can be exported/imported.
 
