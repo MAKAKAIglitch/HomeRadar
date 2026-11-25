@@ -50,3 +50,8 @@ Do not upload this report automatically.
 The initial Android scanner registers for `WifiManager.SCAN_RESULTS_AVAILABLE_ACTION` while the activity is started. On Android 13+, it uses `RECEIVER_EXPORTED` so privileged system components can deliver the Wi-Fi broadcast. The receiver then queries `WifiManager.scanResults`; it does not trust scan details embedded in the broadcast.
 
 The app requests `ACCESS_FINE_LOCATION` at runtime before requesting or reading scan results. Scan requests remain best-effort because Android can throttle or reject them.
+
+
+## Motion sensors currently acquired
+
+The initial Android diagnostic source listens for accelerometer, gyroscope, rotation vector, linear acceleration and pressure events when present. It uses the platform sensor timestamps. The current prototype keeps only the latest vector and a sample counter in memory; durable sensor-stream recording and fusion are not implemented.
