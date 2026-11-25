@@ -59,3 +59,20 @@ The initial local SQLite schema is version 1 and currently stores:
 - `wifi_samples`: SSID/BSSID, RSSI, frequency, monotonic measurement timestamp and associated local XY position.
 
 Foreign keys cascade child rows when a session is removed. The current app keeps this database local and does not upload its contents. The schema does not yet store raw camera frames or the full IMU stream. Future schema changes must add explicit migrations; the current helper intentionally does not drop or silently recreate an older database.
+
+
+## Implemented session archive version 1
+
+The Android app now exports and imports one saved session as a ZIP-based `.homeradar` file:
+
+    session.homeradar
+      manifest.json
+      session.json
+
+- `manifest.json` identifies the format as `homeradar-session`, version 1, and names the payload entry.
+- `session.json` stores session start/end metadata, status, estimated steps/distance, ordered route points, and mapped Wi-Fi samples.
+- Import accepts only the two expected ZIP entries, never extracts archive paths, caps uncompressed data at 32 MiB, and validates route/sample counts, numeric ranges, IDs, RSSI, frequencies, and monotonic route timestamps.
+- The imported session is inserted with a new local database ID inside one SQLite transaction. Existing sessions are not overwritten.
+- The archive contains network identifiers (SSID/BSSID) and local route coordinates. Treat it as sensitive when sharing.
+- This is a **single-session transport format**, not yet the proposed full-project archive with a complete SQLite database, raw IMU stream, assets, and multiple sessions.
+- No third-party serialization or ZIP library was added; the implementation uses Android/JDK APIs.
