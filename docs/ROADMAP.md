@@ -30,11 +30,12 @@ This roadmap defines a sequence of deliverable milestones. It is a plan, not a c
 - [x] Create initial Kotlin Android app using Jetpack Compose and Material 3.
 - [x] Implement initial fine-location permission request and Activity receiver lifecycle.
 - [x] Collect Wi-Fi scan results and scan-result update events; distinguish updated from stale/cached results.
-- [x] Receive accelerometer, gyroscope, rotation-vector, linear-acceleration and pressure sensor events when available (diagnostic stream; raw persistence remains open).
+- [x] Receive accelerometer, gyroscope, rotation-vector, linear-acceleration, pressure and step-detector events when available.
+- [x] Request ACTIVITY_RECOGNITION at point of use on Android 10+ for the hardware step detector.
 - [x] Preserve ScanResult measurement timestamp separately from receive time in the Android acquisition model.
 - [x] Show observed SSID/BSSID, RSSI, frequency band and freshness status in the initial Material 3 screen.
 
-**Status:** initial Wi-Fi scanner and motion-sensor diagnostics are implemented. Durable sensor recording, ARCore pose tracking, sensor fusion and a full walk-recording workflow remain open. Android build has not been executed in this environment.
+**Status:** the foreground prototype now records a step-and-heading PDR estimate and renders it on a blank 2D canvas. The fixed 0.68 m stride is only an initial approximation. Durable sensor recording, ARCore pose tracking, sensor fusion and persistent sessions remain open. Android build has not been executed in this environment.
 
 ## Phase 3 — Session format and persistence
 
@@ -52,19 +53,23 @@ This roadmap defines a sequence of deliverable milestones. It is a plan, not a c
 - [ ] Add tracking quality, pose timestamps and relocalization events.
 - [ ] Add IMU/PDR fallback with explicit drift warnings.
 - [x] Implement bounded pose interpolation for asynchronous Wi-Fi observations; reject interpolation across gaps or tracking loss.
-- [ ] Draw and save the path on a blank 2D canvas.
+- [x] Draw the live estimated path on a blank 2D canvas (foreground PDR prototype; saving remains open).
 - [ ] Add manual origin/reset and optional calibration anchors.
+
+**Status:** experimental step-detector + rotation-vector fallback is implemented. This does not meet the final visual-inertial accuracy target; ARCore/provider integration, drift correction and durable route storage remain open.
 
 **Exit criteria:** a walk is represented as a timestamped trajectory with quality metadata.
 
 ## Phase 5 — Wi-Fi spatial mapping
 
-- [ ] Associate Wi-Fi observations with poses.
-- [ ] Render sample points and per-band layers.
+- [x] Associate fresh Wi-Fi measurements with a route position only when their timestamps are bracketed by sensor poses; reject unbracketed measurements.
+- [x] Render Wi-Fi sample points along the route using RSSI strength colours (per-band layers remain open).
 - [ ] Implement signal aggregation and configurable heatmap cells.
 - [ ] Mark interpolation separately from measured samples.
 - [ ] Expose sample density and confidence.
 - [ ] Test with synthetic paths and controlled real-world recordings.
+
+**Status:** the Android prototype renders fresh scan samples as points on the estimated route. Rust/Core heatmap processing exists, but session persistence, per-network/per-band selection and reproducible map regeneration are not yet wired to Android.
 
 **Exit criteria:** signal maps can be regenerated from raw session data.
 
