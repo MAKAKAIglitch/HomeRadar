@@ -362,7 +362,7 @@ private fun SavedSessionsCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
-                state.savedSessions.forEach { session ->
+                state.savedSessions.take(8).forEach { session ->
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
