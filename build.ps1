@@ -48,8 +48,8 @@ if (-not $UseSystemGradle -and -not (Test-Path $GradleExe)) {
         $ZipPath = Join-Path $TempRoot 'gradle.zip'
         $HashPath = Join-Path $TempRoot 'gradle.zip.sha256'
         Write-Host "Downloading Gradle $GradleVersion (binary distribution)…"
-        Invoke-WebRequest -Uri $DistributionUrl -OutFile $ZipPath
-        Invoke-WebRequest -Uri "$DistributionUrl.sha256" -OutFile $HashPath
+        Invoke-WebRequest -UseBasicParsing -Uri $DistributionUrl -OutFile $ZipPath
+        Invoke-WebRequest -UseBasicParsing -Uri "$DistributionUrl.sha256" -OutFile $HashPath
 
         $ExpectedHash = (Get-Content $HashPath -Raw).Trim().Split(' ')[0].ToLowerInvariant()
         $ActualHash = (Get-FileHash -Path $ZipPath -Algorithm SHA256).Hash.ToLowerInvariant()
