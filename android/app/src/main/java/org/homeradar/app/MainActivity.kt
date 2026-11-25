@@ -41,7 +41,8 @@ class MainActivity : ComponentActivity() {
             screenState.value = screenState.value.copy(
                 availableMotionSensors = snapshot.availableSensors,
                 motionSampleCount = snapshot.receivedSampleCount,
-                lastMotionSensor = snapshot.lastSensorName
+                lastMotionSensor = snapshot.lastSensorName,
+                lastMotionValues = snapshot.lastValues
             )
         }
 
