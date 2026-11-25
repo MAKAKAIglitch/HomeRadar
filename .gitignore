@@ -23,3 +23,6 @@ datasets/private/
 *.homeradar
 *.sqlite-wal
 *.sqlite-shm
+
+# Kotlin Gradle plugin state
+.kotlin/
