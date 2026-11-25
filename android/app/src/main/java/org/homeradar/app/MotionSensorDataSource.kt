@@ -207,9 +207,10 @@ class MotionSensorDataSource(
         positionY += cos(relativeHeading) * estimatedStepLengthMeters
         stepCount += 1
 
-        routePoints += RoutePoint(positionX, positionY, event.timestamp)
-        if (routePoints.size > MAX_ROUTE_POINTS) {
-            routePoints.removeAt(1)
+        if (routePoints.size < MAX_ROUTE_POINTS) {
+            routePoints += RoutePoint(positionX, positionY, event.timestamp)
+        } else if (routePoints.size == MAX_ROUTE_POINTS) {
+            routeStatus = "Достигнут предел точек маршрута; запись шагов и оценка расстояния продолжаются."
         }
         addHistory(event.timestamp)
         publish(force = true)
@@ -227,11 +228,15 @@ class MotionSensorDataSource(
 
     private fun registerSensor(sensor: Sensor): Boolean {
         if (registeredSensorTypes.contains(sensor.type)) return true
-        val success = sensorManager.registerListener(
-            this,
-            sensor,
-            SensorManager.SENSOR_DELAY_GAME
-        )
+        val success = try {
+            sensorManager.registerListener(
+                this,
+                sensor,
+                SensorManager.SENSOR_DELAY_GAME
+            )
+        } catch (_: SecurityException) {
+            false
+        }
         if (success) registeredSensorTypes += sensor.type
         return success
     }
