@@ -20,7 +20,7 @@ The project is designed around a reusable **Rust core** and a polished **Kotlin 
 
 ## Current project status
 
-This repository currently contains the project specification and architecture. It is **not yet a working scanner or navigation application**. Implementation will follow the roadmap in [docs/ROADMAP.md](docs/ROADMAP.md).
+This repository contains the project specification and the first implementation of the portable Rust core. The Android scanner and live camera/IMU integration are not implemented yet. See [docs/ROADMAP.md](docs/ROADMAP.md) for verified progress.
 
 ## Architecture
 
@@ -30,7 +30,7 @@ This repository currently contains the project specification and architecture. I
 - **UI:** Jetpack Compose + Material 3 / Material You.
 - **Persistence:** SQLite for indexed observations and metadata; files for larger session assets; portable `.homeradar` project archive.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/CORE-API.md](docs/CORE-API.md), and [docs/PROJECT-FORMAT.md](docs/PROJECT-FORMAT.md).
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/CORE-API.md](docs/CORE-API.md), [docs/PROJECT-FORMAT.md](docs/PROJECT-FORMAT.md), and the dated [research notes](docs/research/25-11-2026.md).
 
 ## Core principles
 
@@ -60,7 +60,7 @@ Android controls Wi-Fi scan frequency and the availability of some radio metadat
 
 A phone generally cannot discover a complete mesh topology from passive Wi-Fi scans alone. HomeRadar will distinguish observed facts from inferred relationships and may add opt-in integrations for routers that expose topology information.
 
-## Repository layout (planned)
+## Repository layout
 
 ```text
 android/                 Kotlin Android application
@@ -77,7 +77,7 @@ docs/                    Specifications and engineering decisions
 examples/                Core usage examples
 ```
 
-The layout is a target structure, not a claim that these modules are implemented yet.
+The Rust crate currently contains initial domain types, trajectory processing, conservative SSID grouping, spatial RSSI aggregation, and unit tests. More advanced localization, persistence, Android acquisition and FFI are still planned.
 
 ## Development status
 
