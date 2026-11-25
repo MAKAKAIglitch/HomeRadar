@@ -44,7 +44,8 @@ data class WifiScanUiState(
     val lastReceivedAtNs: Long? = null,
     val availableMotionSensors: List<String> = emptyList(),
     val motionSampleCount: Long = 0L,
-    val lastMotionSensor: String? = null
+    val lastMotionSensor: String? = null,
+    val lastMotionValues: List<Float> = emptyList()
 )
 
 class WifiScanDataSource(
