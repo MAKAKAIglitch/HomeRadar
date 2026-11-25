@@ -48,3 +48,14 @@ Use integer monotonic timestamps and explicit clock-domain identifiers. Add inde
 ## Privacy
 
 Project archives may contain sensitive information about a home and nearby wireless networks. Keep them local by default. Warn before sharing, provide a sanitization/export mode, and never include real user scans in public test fixtures.
+
+
+## Current Android database prototype
+
+The initial local SQLite schema is version 1 and currently stores:
+
+- `sessions`: session start/end wall-clock metadata, lifecycle status, step count and estimated distance;
+- `route_points`: ordered local XY points and monotonic sensor timestamps;
+- `wifi_samples`: SSID/BSSID, RSSI, frequency, monotonic measurement timestamp and associated local XY position.
+
+Foreign keys cascade child rows when a session is removed. The current app keeps this database local and does not upload its contents. The schema does not yet store raw camera frames or the full IMU stream. Future schema changes must add explicit migrations; the current helper intentionally does not drop or silently recreate an older database.
