@@ -6,21 +6,51 @@ HomeRadar — Android-приложение на Kotlin и Jetpack Compose Materi
 
 - JDK 17.
 - Android SDK Platform 37.
-- Gradle 9.5.0.
+- Gradle 9.5.0 (build scripts скачивают его при отсутствии подходящей локальной версии).
 - Android Gradle Plugin 9.3.1.
 - Kotlin Gradle Plugin / Compose compiler 2.4.21.
 
-## Сборка
+## Сборка на Linux
 
-В репозитории зафиксирован gradle-wrapper.properties, но wrapper JAR и скрипты gradlew пока не добавлены. Если Gradle 9.5.0 установлен локально, из корня репозитория выполни:
+Из корня репозитория:
 
-    gradle wrapper --gradle-version 9.5.0
-    ./gradlew :android:app:assembleDebug
+    bash ./build.sh
 
-На Windows после генерации wrapper:
+Скрипт:
+- проверяет JDK и Android SDK Platform 37;
+- использует установленный Gradle 9.5.0 или скачивает binary-only distribution в пользовательский cache;
+- сверяет SHA-256 архива Gradle с checksum, опубликованным Gradle;
+- запускает только :android:app:assembleDebug, без тестовых/лишних задач;
+- ограничивает Gradle двумя worker-потоками и отключает daemon для этой сборки.
 
-    gradle wrapper --gradle-version 9.5.0
-    .\gradlew.bat :android:app:assembleDebug
+Готовый APK:
+
+    android/app/build/outputs/apk/debug/app-debug.apk
+
+## Сборка на Windows
+
+Из корня репозитория:
+
+    build.bat
+
+Или напрямую через PowerShell:
+
+    .\build.ps1
+
+Нужны JDK 17 и Android SDK Platform 37. Gradle 9.5.0 будет загружен и проверен по SHA-256 при первом запуске, затем переиспользуется из %LOCALAPPDATA%\HomeRadar\Gradle.
+
+## GitHub Actions
+
+Workflow .github/workflows/android-build.yml собирает APK только на ubuntu-latest.
+
+- Автоматический запуск — только при push в main, если изменены файлы приложения, Gradle-конфигурация или build scripts.
+- Ручной запуск доступен через workflow_dispatch.
+- Pull request, расписания, Windows runner и отдельные тестовые matrix jobs не включены.
+- Используется JDK 17, Android SDK Platform 37 и Gradle 9.5.0.
+- Gradle cache использует базовый open-source provider.
+- Загружается один debug APK; срок хранения артефакта — 3 дня.
+
+После успешного workflow APK находится в разделе Actions → соответствующий запуск → Artifacts.
 
 ## Реализовано
 
@@ -35,7 +65,7 @@ HomeRadar — Android-приложение на Kotlin и Jetpack Compose Materi
 - Локальная SQLite-база с записями проходов, точками маршрута и привязанными Wi-Fi-измерениями.
 - Восстановление незавершённых сессий после неожиданного завершения приложения.
 - Просмотр списка сохранённых проходов и повторное открытие маршрута с Wi-Fi-точками.
-- Экспорт отдельного прохода в ZIP-архив `.homeradar` версии 1 и импорт такого архива через системный выбор файлов.
+- Экспорт отдельного прохода в ZIP-архив homeradar версии 1 и импорт такого архива через системный выбор файлов.
 - Проверка формата, размеров архива, координат, временных меток, RSSI и частот до импорта; импорт записывается в SQLite одной транзакцией.
 - Живая отрисовка траектории на свободном 2D-поле без плана помещения.
 - Привязка свежих Wi-Fi-измерений к позиции только при наличии сенсорных отсчётов, ограничивающих время измерения.
@@ -47,8 +77,8 @@ HomeRadar — Android-приложение на Kotlin и Jetpack Compose Materi
 - PDR пока использует фиксированную оценку длины шага 0,68 м. Индивидуальная длина шага не калибруется, ошибка положения постепенно накапливается.
 - Азимут основан на rotation vector и магнитном направлении; телефон нужно держать горизонтально экраном вверх, верхним краем по направлению движения.
 - Камера/ARCore и полноценный sensor fusion ещё не подключены.
-- Полный поток IMU пока не сохраняется. SQLite хранит точки PDR-маршрута и Wi-Fi-замеры, привязанные к ним. `.homeradar` пока переносит одну сессию и не включает исходный IMU, видео, raw camera frames или весь SQLite-файл. Rust/Kotlin FFI ещё не реализован.
+- Полный поток IMU пока не сохраняется. SQLite хранит точки PDR-маршрута и Wi-Fi-замеры, привязанные к ним. homeradar переносит одну сессию и не включает исходный IMU, видео, raw camera frames или весь SQLite-файл. Rust/Kotlin FFI ещё не реализован.
 - Запись останавливается при уходе Activity в фон; фоновый сбор пока не реализован.
 - Android ограничивает частоту Wi-Fi-сканирований; startScan() устарел и может быть отклонён системой.
 - Для чтения Wi-Fi результатов может требоваться включённая системная геолокация.
-- Сборка Android в текущей среде ещё не запускалась; перед использованием нужна локальная Gradle-сборка.
+- CI workflow не доказывает точность позиционирования; он только компилирует Android debug APK.
