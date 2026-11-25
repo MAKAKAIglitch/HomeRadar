@@ -1,9 +1,6 @@
-# Rust
+# Rust build output
 /target/
 **/target/
-Cargo.lock
-# Keep Cargo.lock for applications; if the workspace becomes a published binary/application workspace,
-# remove the ignore rule and commit the lockfile. Revisit before first implementation release.
 
 # Android / Gradle
 .gradle/
