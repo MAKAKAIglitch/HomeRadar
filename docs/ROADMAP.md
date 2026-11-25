@@ -17,8 +17,10 @@ This roadmap defines a sequence of deliverable milestones. It is a plan, not a c
 
 - [x] Create initial Rust workspace and core crate.
 - [x] Define initial monotonic timestamps, local 2D pose and quality types.
-- [x] Define initial Wi-Fi observation type, frequency-band classification and conservative SSID display grouping.\n- [ ] Expand to explicit BSSID, radio, access-point, and network-group entities.
-- [x] Add input validation and unit tests for timestamps, trajectory gaps, tracking loss, pose interpolation, Wi-Fi bands, RSSI aggregation and SSID grouping.\n- [ ] Add serialization tests when the storage format is implemented.
+- [x] Define initial Wi-Fi observation type, frequency-band classification and conservative SSID display grouping.
+- [ ] Expand to explicit BSSID, radio, access-point, and network-group entities.
+- [x] Add input validation and unit tests for timestamps, trajectory gaps, tracking loss, pose interpolation, Wi-Fi bands, RSSI aggregation and SSID grouping.
+- [ ] Add serialization tests when the storage format is implemented.
 - [x] Add synthetic unit-test observations without real home/network information.
 
 **Status:** initial standard-library-only core is implemented. Run `cd core && cargo test --workspace` locally; CI/host compilation has not yet been run in this environment. Serialization and the Android bridge remain open.
