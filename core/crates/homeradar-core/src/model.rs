@@ -29,6 +29,13 @@ impl Vec2 {
         let dy = self.y - other.y;
         (dx * dx + dy * dy).sqrt()
     }
+
+    pub fn lerp(self, other: Self, t: f64) -> Self {
+        Self::new(
+            self.x + (other.x - self.x) * t,
+            self.y + (other.y - self.y) * t,
+        )
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -52,6 +59,27 @@ pub struct Pose2 {
 impl Pose2 {
     pub fn is_valid(&self) -> bool {
         self.position_m.is_finite() && self.heading_rad.is_finite()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub enum WifiBand {
+    Ghz2_4,
+    Ghz5,
+    Ghz6,
+    Unknown,
+}
+
+impl WifiBand {
+    /// Classifies common Wi-Fi bands from the observed center frequency in MHz.
+    /// This is a broad display classification, not a regulatory-channel validator.
+    pub fn from_frequency_mhz(frequency_mhz: u32) -> Self {
+        match frequency_mhz {
+            2400..=2500 => Self::Ghz2_4,
+            4900..=5924 => Self::Ghz5,
+            5925..=7125 => Self::Ghz6,
+            _ => Self::Unknown,
+        }
     }
 }
 
@@ -84,6 +112,10 @@ impl WifiObservation {
 
     pub fn age_at_receive_ns(&self) -> u64 {
         self.received_at.0.saturating_sub(self.observed_at.0)
+    }
+
+    pub fn band(&self) -> WifiBand {
+        WifiBand::from_frequency_mhz(self.frequency_mhz)
     }
 }
 
@@ -127,7 +159,15 @@ mod tests {
             capabilities: None,
         };
         assert_eq!(observation.age_at_receive_ns(), 25);
+        assert_eq!(observation.band(), WifiBand::Ghz2_4);
         assert!(observation.validate().is_ok());
+    }
+
+    #[test]
+    fn classifies_common_wifi_bands() {
+        assert_eq!(WifiBand::from_frequency_mhz(5180), WifiBand::Ghz5);
+        assert_eq!(WifiBand::from_frequency_mhz(5975), WifiBand::Ghz6);
+        assert_eq!(WifiBand::from_frequency_mhz(1234), WifiBand::Unknown);
     }
 
     #[test]
