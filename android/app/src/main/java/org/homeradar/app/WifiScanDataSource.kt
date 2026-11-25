@@ -52,7 +52,9 @@ data class WifiScanUiState(
     val routeDistanceMeters: Double = 0.0,
     val routeStatus: String = "Маршрут не записывается.",
     val wifiMarkers: List<WifiRouteMarker> = emptyList(),
-    val unmappedWifiSamples: Int = 0
+    val unmappedWifiSamples: Int = 0,
+    val savedSessions: List<SavedSessionSummary> = emptyList(),
+    val selectedSessionId: Long? = null
 )
 
 class WifiScanDataSource(
