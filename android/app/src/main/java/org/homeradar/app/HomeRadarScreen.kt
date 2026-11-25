@@ -34,6 +34,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import java.text.DateFormat
+import java.util.Date
 import kotlin.math.min
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,7 +43,8 @@ import kotlin.math.min
 fun HomeRadarScreen(
     state: WifiScanUiState,
     onScanClick: () -> Unit,
-    onRouteClick: () -> Unit
+    onRouteClick: () -> Unit,
+    onOpenSession: (Long) -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -72,6 +75,9 @@ fun HomeRadarScreen(
             }
             item {
                 RouteMapCard(state)
+            }
+            item {
+                SavedSessionsCard(state, onOpenSession)
             }
             item {
                 WifiScannerCard(state, onScanClick)
@@ -196,7 +202,10 @@ private fun RouteMapCard(state: WifiScanUiState) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Траектория", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    if (state.selectedSessionId == null) "Траектория" else "Сохранённый проход #${state.selectedSessionId}",
+                    style = MaterialTheme.typography.titleMedium
+                )
                 Text(
                     "${state.wifiMarkers.size} Wi-Fi",
                     style = MaterialTheme.typography.labelMedium,
@@ -317,6 +326,89 @@ private fun RouteMapCard(state: WifiScanUiState) {
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.onSurfaceVariant
                 )
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun SavedSessionsCard(
+    state: WifiScanUiState,
+    onOpenSession: (Long) -> Unit
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Сохранённые проходы", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    state.savedSessions.size.toString(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            if (state.savedSessions.isEmpty()) {
+                Text(
+                    "После завершения записи проход появится здесь и останется доступен после перезапуска приложения.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                state.savedSessions.forEach { session ->
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Проход #${session.id}",
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                            Text(
+                                when (session.status) {
+                                    "interrupted" -> "Прерван"
+                                    "recording" -> "Не завершён"
+                                    else -> "Сохранён"
+                                },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            DateFormat.getDateTimeInstance(
+                                DateFormat.SHORT,
+                                DateFormat.SHORT
+                            ).format(Date(session.startedAtEpochMs)),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "${session.steps} шагов · ≈ ${"%.1f".format(session.distanceMeters)} м · ${session.wifiSampleCount} Wi-Fi-точек",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        OutlinedButton(
+                            onClick = { onOpenSession(session.id) },
+                            enabled = !state.isRecording && state.selectedSessionId != session.id
+                        ) {
+                            Text(
+                                if (state.selectedSessionId == session.id) "Открыт"
+                                else "Открыть на карте"
+                            )
+                        }
+                    }
+                }
             }
         }
     }
