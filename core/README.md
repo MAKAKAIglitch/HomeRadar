@@ -27,12 +27,12 @@ cargo run -p homeradar-core --example synthetic_walk
 
 - ARCore/камера/IMU acquisition.
 - Sensor fusion, VIO/PDR и коррекция дрейфа.
-- Wi-Fi scan acquisition на Android.
-- Привязка измерений к pose по интерполяции времени.
+- Интеграция Android scan events с сохранёнными сессиями и Rust Core.
+- Полный конвейер привязки scan events к позам и heatmap в приложении.
 - Распознавание Mesh и физической идентичности точек доступа.
 - SQLite, формат архива `.homeradar`, сериализация.
 - UniFFI и Kotlin bindings.
-- Android UI.
+- Экран траектории и визуализация карты в Android-приложении.
 
 ## Ограничения первой версии
 
