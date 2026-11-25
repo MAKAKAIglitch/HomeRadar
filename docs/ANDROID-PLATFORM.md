@@ -52,6 +52,12 @@ The initial Android scanner registers for `WifiManager.SCAN_RESULTS_AVAILABLE_AC
 The app requests `ACCESS_FINE_LOCATION` at runtime before requesting or reading scan results. Scan requests remain best-effort because Android can throttle or reject them.
 
 
+## Runtime permissions
+
+- `ACCESS_FINE_LOCATION` is requested for Wi-Fi scan results according to Android's Wi-Fi API requirements.
+- `ACTIVITY_RECOGNITION` is declared in the manifest and requested at the moment the user starts step-based route recording on Android 10+.
+- `CAMERA` is declared for the future optional ARCore adapter; the current UI does not yet start a camera session.
+
 ## Motion sensors and route prototype
 
 The Android acquisition source listens for accelerometer, gyroscope, rotation vector, linear acceleration, pressure and the step detector when available. The step detector requires ACTIVITY_RECOGNITION on Android 10+; request it only when the user starts a route. Rotation-vector orientation is used for a relative heading; the user must hold the phone horizontally with the screen facing up and the top edge pointing forward. The initial PDR prototype applies an estimated 0.68 m stride. This is deliberately marked approximate because device orientation, magnetic interference and stride length cause drift.
