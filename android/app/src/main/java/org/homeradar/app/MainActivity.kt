@@ -180,6 +180,13 @@ class MainActivity : ComponentActivity() {
         if (sessionId != null && newMarkers.isNotEmpty()) {
             databaseExecutor.execute {
                 runCatching { sessionDatabase.appendWifiMarkers(sessionId, newMarkers) }
+                    .onFailure { error ->
+                        runOnUiThread {
+                            screenState.value = screenState.value.copy(
+                                storageStatus = "Ошибка сохранения Wi-Fi: ${error.javaClass.simpleName}"
+                            )
+                        }
+                    }
             }
         }
     }
@@ -254,6 +261,12 @@ class MainActivity : ComponentActivity() {
                             databaseExecutor.execute {
                                 runCatching {
                                     sessionDatabase.appendWifiMarkers(sessionId, existingMarkers)
+                                }.onFailure { error ->
+                                    runOnUiThread {
+                                        screenState.value = screenState.value.copy(
+                                            storageStatus = "Ошибка сохранения Wi-Fi: ${error.javaClass.simpleName}"
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -298,6 +311,19 @@ class MainActivity : ComponentActivity() {
                         sessionDatabase.appendRoutePoints(sessionId, startSequence, newPoints)
                     }
                     sessionDatabase.updateProgress(sessionId, steps, distance)
+                }.onSuccess {
+                    runOnUiThread {
+                        screenState.value = screenState.value.copy(storageStatus = null)
+                    }
+                }.onFailure { error ->
+                    runOnUiThread {
+                        if (activeSessionId == sessionId) {
+                            persistedRoutePointCount = minOf(persistedRoutePointCount, startSequence)
+                        }
+                        screenState.value = screenState.value.copy(
+                            storageStatus = "Ошибка сохранения маршрута: ${error.javaClass.simpleName}"
+                        )
+                    }
                 }
             }
         }
