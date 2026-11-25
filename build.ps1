@@ -34,7 +34,7 @@ $SystemGradle = Get-Command gradle -ErrorAction SilentlyContinue
 $UseSystemGradle = $false
 if ($SystemGradle) {
     $VersionText = (& $SystemGradle.Source --version 2>&1 | Out-String)
-    if ($VersionText -match "Gradle $([regex]::Escape($GradleVersion))") {
+    if ($VersionText -match "(?m)^Gradle $([regex]::Escape($GradleVersion))\s*$") {
         $GradleExe = $SystemGradle.Source
         $UseSystemGradle = $true
     }
