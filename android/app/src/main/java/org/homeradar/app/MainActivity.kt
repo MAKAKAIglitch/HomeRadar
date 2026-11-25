@@ -331,10 +331,15 @@ class MainActivity : ComponentActivity() {
 
     private fun finishActiveSession(snapshot: MotionSensorSnapshot) {
         val sessionId = activeSessionId ?: return
+        // Reinsert the complete bounded snapshot with conflict-ignore so an earlier
+        // transient write failure cannot leave permanent sequence gaps.
+        persistedRoutePointCount = 0
         persistRouteSnapshot(snapshot)
+        val markerSnapshot = screenState.value.wifiMarkers.toList()
         activeSessionId = null
         databaseExecutor.execute {
             runCatching {
+                sessionDatabase.appendWifiMarkers(sessionId, markerSnapshot)
                 sessionDatabase.finishSession(
                     sessionId = sessionId,
                     steps = snapshot.routeSteps,
