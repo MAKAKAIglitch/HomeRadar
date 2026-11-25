@@ -71,7 +71,7 @@ This roadmap defines a sequence of deliverable milestones. It is a plan, not a c
 - [ ] Expose sample density and confidence.
 - [ ] Test with synthetic paths and controlled real-world recordings.
 
-**Status:** the Android prototype renders fresh scan samples as points on the estimated route. Rust/Core heatmap processing exists, but session persistence, per-network/per-band selection and reproducible map regeneration are not yet wired to Android.
+**Status:** the Android prototype renders and persists fresh scan samples as points on the estimated route. Rust/Core heatmap processing exists, but per-network/per-band selection, configurable cell aggregation, density/confidence overlays and full regeneration from raw session observations are not yet wired to Android.
 
 **Exit criteria:** signal maps can be regenerated from raw session data.
 
