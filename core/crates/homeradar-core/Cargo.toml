@@ -1,0 +1,12 @@
+[package]
+name = "homeradar-core"
+version = "0.1.0"
+description = "Portable trajectory and radio-mapping core for HomeRadar"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
