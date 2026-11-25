@@ -52,6 +52,8 @@ The initial Android scanner registers for `WifiManager.SCAN_RESULTS_AVAILABLE_AC
 The app requests `ACCESS_FINE_LOCATION` at runtime before requesting or reading scan results. Scan requests remain best-effort because Android can throttle or reject them.
 
 
-## Motion sensors currently acquired
+## Motion sensors and route prototype
 
-The initial Android diagnostic source listens for accelerometer, gyroscope, rotation vector, linear acceleration and pressure events when present. It uses the platform sensor timestamps. The current prototype keeps only the latest vector and a sample counter in memory; durable sensor-stream recording and fusion are not implemented.
+The Android acquisition source listens for accelerometer, gyroscope, rotation vector, linear acceleration, pressure and the step detector when available. The step detector requires ACTIVITY_RECOGNITION on Android 10+; request it only when the user starts a route. Rotation-vector orientation is used for a relative heading, and the initial PDR prototype applies an estimated 0.68 m stride. This is deliberately marked approximate because device orientation, magnetic interference and stride length cause drift.
+
+A short in-memory pose history supports Wi-Fi timestamp association. Only measurements bracketed by sensor poses are placed on the route; no extrapolation is performed. The route recording currently stops when the Activity leaves the foreground. Durable sensor streams, ARCore camera pose, sensor fusion and persistence remain open.
