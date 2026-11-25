@@ -42,7 +42,9 @@ fun HomeRadarScreen(
     state: WifiScanUiState,
     onScanClick: () -> Unit,
     onRouteClick: () -> Unit,
-    onOpenSession: (Long) -> Unit
+    onOpenSession: (Long) -> Unit,
+    onExportSession: (Long) -> Unit,
+    onImportSession: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -75,7 +77,7 @@ fun HomeRadarScreen(
                 RouteMapCard(state)
             }
             item {
-                SavedSessionsCard(state, onOpenSession)
+                SavedSessionsCard(state, onOpenSession, onExportSession, onImportSession)
             }
             item {
                 WifiScannerCard(state, onScanClick)
@@ -340,7 +342,9 @@ private fun RouteMapCard(state: WifiScanUiState) {
 @Composable
 private fun SavedSessionsCard(
     state: WifiScanUiState,
-    onOpenSession: (Long) -> Unit
+    onOpenSession: (Long) -> Unit,
+    onExportSession: (Long) -> Unit,
+    onImportSession: () -> Unit
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -353,6 +357,9 @@ private fun SavedSessionsCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("Сохранённые проходы", style = MaterialTheme.typography.titleMedium)
+                OutlinedButton(onClick = onImportSession, enabled = !state.isRecording) {
+                    Text("Импорт")
+                }
                 Text(
                     state.savedSessions.size.toString(),
                     style = MaterialTheme.typography.labelMedium,
@@ -403,14 +410,22 @@ private fun SavedSessionsCard(
                             "${session.steps} шагов · ≈ ${"%.1f".format(session.distanceMeters)} м · ${session.wifiSampleCount} Wi-Fi-точек",
                             style = MaterialTheme.typography.bodySmall
                         )
-                        OutlinedButton(
-                            onClick = { onOpenSession(session.id) },
-                            enabled = !state.isRecording && state.selectedSessionId != session.id
-                        ) {
-                            Text(
-                                if (state.selectedSessionId == session.id) "Открыт"
-                                else "Открыть на карте"
-                            )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = { onOpenSession(session.id) },
+                                enabled = !state.isRecording && state.selectedSessionId != session.id
+                            ) {
+                                Text(
+                                    if (state.selectedSessionId == session.id) "Открыт"
+                                    else "Открыть"
+                                )
+                            }
+                            OutlinedButton(
+                                onClick = { onExportSession(session.id) },
+                                enabled = !state.isRecording && session.status != "recording"
+                            ) {
+                                Text("Экспорт")
+                            }
                         }
                     }
                 }
