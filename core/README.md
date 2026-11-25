@@ -26,7 +26,7 @@ cargo run -p homeradar-core --example synthetic_walk
 
 ## Пока не реализовано
 
-- ARCore/камера/IMU acquisition.
+- ARCore camera pose acquisition и передача Android IMU-потока в Core.
 - Sensor fusion, VIO/PDR и коррекция дрейфа.
 - Интеграция Android scan events с сохранёнными сессиями и Rust Core.
 - Полный конвейер привязки scan events к позам и heatmap в приложении.
