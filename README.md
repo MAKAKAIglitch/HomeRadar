@@ -20,7 +20,7 @@ The project is designed around a reusable **Rust core** and a polished **Kotlin 
 
 ## Current project status
 
-This repository contains the project specification and the first implementation of the portable Rust core. The Android scanner and live camera/IMU integration are not implemented yet. See [docs/ROADMAP.md](docs/ROADMAP.md) for verified progress.
+This repository contains the first portable Rust core and an initial Android application with a Material 3 Wi-Fi scanner. The walking-position provider (ARCore/IMU), live trajectory screen, persistence and Rust/Kotlin bridge are not implemented yet. See [docs/ROADMAP.md](docs/ROADMAP.md) for verified progress.
 
 ## Architecture
 
@@ -77,7 +77,7 @@ docs/                    Specifications and engineering decisions
 examples/                Core usage examples
 ```
 
-The Rust crate currently contains initial domain types, trajectory processing, conservative SSID grouping, spatial RSSI aggregation, and unit tests. More advanced localization, persistence, Android acquisition and FFI are still planned.
+The Rust crate contains initial domain types, trajectory processing/interpolation, conservative SSID grouping, frequency-band classification, spatial RSSI aggregation, and unit tests. Android currently acquires and displays Wi-Fi scan results with freshness metadata. Camera/IMU localization, mapping UI, persistence and FFI remain planned.
 
 ## Development status
 
