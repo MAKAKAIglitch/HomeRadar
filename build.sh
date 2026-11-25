@@ -23,10 +23,17 @@ if [[ -z "${ANDROID_HOME:-}" ]]; then
   echo "Error: Android SDK not found. Set ANDROID_HOME or ANDROID_SDK_ROOT." >&2
   exit 1
 fi
+
+# API 37.0 is installed in platforms/android-37.0, but AGP 9.3.1
+# looks up compileSdk = 37 using platforms/android-37.
 if [[ ! -f "${ANDROID_HOME}/platforms/android-37/android.jar" ]]; then
-  echo "Error: Android SDK Platform 37 is missing." >&2
-  echo "Install it with: sdkmanager 'platforms;android-37'" >&2
-  exit 1
+  if [[ -f "${ANDROID_HOME}/platforms/android-37.0/android.jar" ]]; then
+    ln -sfn android-37.0 "${ANDROID_HOME}/platforms/android-37"
+  else
+    echo "Error: Android SDK Platform 37.0 is missing." >&2
+    echo "Install it with: sdkmanager 'platforms;android-37.0'" >&2
+    exit 1
+  fi
 fi
 
 if command -v gradle >/dev/null 2>&1 && gradle --version 2>/dev/null | grep -Fqx "Gradle ${GRADLE_VERSION}"; then
