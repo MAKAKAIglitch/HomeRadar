@@ -81,7 +81,9 @@
 
 ## Сборка Android-приложения
 
-Требуются JDK 17, Android SDK Platform 37 и Gradle 9.5.0. Подробности находятся в [android/README.md](android/README.md).
+Требуются JDK 17 и Android SDK Platform 37. На Linux запусти `bash ./build.sh`, на Windows — `build.bat`. Скрипты загружают Gradle 9.5.0 при необходимости и проверяют его SHA-256. Готовый APK появится в `android/app/build/outputs/apk/debug/app-debug.apk`. Подробности — в [android/README.md](android/README.md).
+
+GitHub Actions собирает APK только на Linux: при изменениях Android/Gradle/build-файлов в `main` или вручную через `workflow_dispatch`. Workflow не использует расписание, pull request runners или Windows runner; готовый APK загружается как artifact на 3 дня.
 
 ## Разрешения Android
 
