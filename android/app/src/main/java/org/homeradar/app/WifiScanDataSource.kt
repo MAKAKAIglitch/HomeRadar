@@ -45,7 +45,14 @@ data class WifiScanUiState(
     val availableMotionSensors: List<String> = emptyList(),
     val motionSampleCount: Long = 0L,
     val lastMotionSensor: String? = null,
-    val lastMotionValues: List<Float> = emptyList()
+    val lastMotionValues: List<Float> = emptyList(),
+    val isRecording: Boolean = false,
+    val routePoints: List<RoutePoint> = emptyList(),
+    val routeSteps: Int = 0,
+    val routeDistanceMeters: Double = 0.0,
+    val routeStatus: String = "Маршрут не записывается.",
+    val wifiMarkers: List<WifiRouteMarker> = emptyList(),
+    val unmappedWifiSamples: Int = 0
 )
 
 class WifiScanDataSource(
