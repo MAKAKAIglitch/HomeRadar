@@ -12,6 +12,7 @@ import androidx.core.content.ContextCompat
 class MainActivity : ComponentActivity() {
     private val screenState = mutableStateOf(WifiScanUiState())
     private lateinit var wifiScanner: WifiScanDataSource
+    private lateinit var motionSensors: MotionSensorDataSource
 
     private val locationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -36,6 +37,14 @@ class MainActivity : ComponentActivity() {
             )
         }
 
+        motionSensors = MotionSensorDataSource(this) { snapshot ->
+            screenState.value = screenState.value.copy(
+                availableMotionSensors = snapshot.availableSensors,
+                motionSampleCount = snapshot.receivedSampleCount,
+                lastMotionSensor = snapshot.lastSensorName
+            )
+        }
+
         screenState.value = screenState.value.copy(
             hasPermission = hasLocationPermission()
         )
@@ -54,9 +63,11 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         screenState.value = screenState.value.copy(hasPermission = hasLocationPermission())
         wifiScanner.register()
+        motionSensors.register()
     }
 
     override fun onStop() {
+        motionSensors.unregister()
         wifiScanner.unregister()
         super.onStop()
     }
