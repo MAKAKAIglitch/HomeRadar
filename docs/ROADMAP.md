@@ -15,13 +15,13 @@ This roadmap defines a sequence of deliverable milestones. It is a plan, not a c
 
 ## Phase 1 — Rust domain core
 
-- [ ] Create Rust workspace and crate boundaries.
-- [ ] Define stable units, timestamps, coordinate frames, pose and quality types.
-- [ ] Define Wi-Fi observation, BSSID, radio, access-point, and network-group types.
-- [ ] Add validation and serialization tests.
-- [ ] Add synthetic fixture datasets without real home/network information.
+- [x] Create initial Rust workspace and core crate.
+- [x] Define initial monotonic timestamps, local 2D pose and quality types.
+- [x] Define initial Wi-Fi observation type and conservative SSID display grouping.\n- [ ] Expand to explicit BSSID, radio, access-point, and network-group entities.
+- [x] Add input validation and unit tests for timestamps, trajectory gaps, tracking loss, RSSI aggregation and SSID grouping.\n- [ ] Add serialization tests when the storage format is implemented.
+- [x] Add synthetic unit-test observations without real home/network information.
 
-**Exit criteria:** core types can be tested on desktop without Android.
+**Status:** initial standard-library-only core is implemented. Run `cd core && cargo test --workspace` locally; CI/host compilation has not yet been run in this environment. Serialization and the Android bridge remain open.
 
 ## Phase 2 — Android acquisition prototype
 
