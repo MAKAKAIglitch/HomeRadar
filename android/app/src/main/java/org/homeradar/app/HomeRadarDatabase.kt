@@ -287,6 +287,53 @@ class HomeRadarDatabase(context: Context) : SQLiteOpenHelper(
         return StoredHomeRadarSession(summary, routePoints, wifiMarkers)
     }
 
+    fun importSession(payload: HomeRadarArchivePayload): Long {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val sessionValues = ContentValues().apply {
+                put("started_at_epoch_ms", payload.startedAtEpochMs)
+                if (payload.finishedAtEpochMs == null) putNull("finished_at_epoch_ms")
+                else put("finished_at_epoch_ms", payload.finishedAtEpochMs)
+                put("status", payload.status)
+                put("steps", payload.steps)
+                put("distance_m", payload.distanceMeters)
+            }
+            val sessionId = db.insertOrThrow(TABLE_SESSIONS, null, sessionValues)
+
+            payload.routePoints.forEachIndexed { index, point ->
+                val values = ContentValues().apply {
+                    put("session_id", sessionId)
+                    put("sequence", index)
+                    put("elapsed_ns", point.timestampNs)
+                    put("x_m", point.xMeters)
+                    put("y_m", point.yMeters)
+                }
+                db.insertOrThrow(TABLE_ROUTE_POINTS, null, values)
+            }
+
+            payload.wifiMarkers.forEach { marker ->
+                val values = ContentValues().apply {
+                    put("session_id", sessionId)
+                    put("sample_key", marker.id)
+                    put("ssid", marker.ssid)
+                    put("bssid", marker.bssid)
+                    put("rssi_dbm", marker.rssiDbm)
+                    put("frequency_mhz", marker.frequencyMhz)
+                    put("measured_at_ns", marker.measuredAtNs)
+                    put("x_m", marker.xMeters)
+                    put("y_m", marker.yMeters)
+                }
+                db.insertOrThrow(TABLE_WIFI_SAMPLES, null, values)
+            }
+
+            db.setTransactionSuccessful()
+            return sessionId
+        } finally {
+            db.endTransaction()
+        }
+    }
+
     fun deleteSession(sessionId: Long) {
         writableDatabase.delete(TABLE_SESSIONS, "id = ?", arrayOf(sessionId.toString()))
     }
