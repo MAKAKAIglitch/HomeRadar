@@ -31,7 +31,9 @@ gradle wrapper --gradle-version 9.5.0
 - Android Activity и Compose Material 3 UI.
 - Запрос `ACCESS_FINE_LOCATION` перед чтением Wi-Fi scan results.
 - Регистрация системного scan-result receiver на время активности.
-- Запрос Wi-Fi scan через `WifiManager.startScan()`.\n- Получение событий акселерометра, гироскопа, rotation vector, linear acceleration и барометра, если они доступны.\n- Отображение доступности датчиков, количества событий и последнего вектора.
+- Запрос Wi-Fi scan через `WifiManager.startScan()`.
+- Получение событий акселерометра, гироскопа, rotation vector, linear acceleration и барометра, если они доступны.
+- Отображение доступности датчиков, количества событий и последнего вектора.
 - Отображение SSID, BSSID, RSSI, частоты и примерного диапазона.
 - Сохранение measurement timestamp отдельно от receive timestamp.
 - Явная индикация, обновились ли результаты; старые результаты не маркируются свежими.
