@@ -8,8 +8,8 @@ This roadmap defines a sequence of deliverable milestones. It is a plan, not a c
 - [x] Separate Android acquisition from portable Rust processing.
 - [x] Define Wi-Fi identity entities and uncertainty requirements.
 - [x] Document Android scan limitations and local-first storage.
-- [ ] Agree on initial Rust/Kotlin toolchain and minimum Android API level.
-- [ ] Add architecture decision records as implementation choices are validated.
+- [x] Agree on initial Rust/Kotlin toolchain and minimum Android API level.
+- [x] Add initial architecture decision records.
 
 **Exit criteria:** domain contracts and platform constraints are reviewed before implementation.
 
