@@ -1,0 +1,28 @@
+# Rust
+/target/
+**/target/
+Cargo.lock
+# Keep Cargo.lock for applications; if the workspace becomes a published binary/application workspace,
+# remove the ignore rule and commit the lockfile. Revisit before first implementation release.
+
+# Android / Gradle
+.gradle/
+**/build/
+local.properties
+*.iml
+.idea/
+.cxx/
+.externalNativeBuild/
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+
+# Local captures and private datasets
+captures/
+datasets/private/
+*.homeradar
+*.sqlite-wal
+*.sqlite-shm
