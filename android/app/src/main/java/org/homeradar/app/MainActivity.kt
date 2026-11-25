@@ -248,39 +248,30 @@ class MainActivity : ComponentActivity() {
                         activeSessionId = sessionId
                         persistedRoutePointCount = 0
                         val current = screenState.value
-                        persistRouteSnapshot(
-                            MotionSensorSnapshot(
-                                isRecording = current.isRecording,
-                                routePoints = current.routePoints,
-                                routeSteps = current.routeSteps,
-                                routeDistanceMeters = current.routeDistanceMeters
-                            )
+                        val currentSnapshot = MotionSensorSnapshot(
+                            isRecording = current.isRecording,
+                            routePoints = current.routePoints,
+                            routeSteps = current.routeSteps,
+                            routeDistanceMeters = current.routeDistanceMeters
                         )
-                        if (current.wifiMarkers.isNotEmpty()) {
+                        if (current.isRecording) {
+                            persistRouteSnapshot(currentSnapshot)
                             val existingMarkers = current.wifiMarkers.toList()
-                            databaseExecutor.execute {
-                                runCatching {
-                                    sessionDatabase.appendWifiMarkers(sessionId, existingMarkers)
-                                }.onFailure { error ->
-                                    runOnUiThread {
-                                        screenState.value = screenState.value.copy(
-                                            storageStatus = "Ошибка сохранения Wi-Fi: ${error.javaClass.simpleName}"
+                            if (existingMarkers.isNotEmpty()) {
+                                databaseExecutor.execute {
+                                    runCatching {
+                                        sessionDatabase.appendWifiMarkers(sessionId, existingMarkers)
+                                    }.onFailure { error ->
+                                        reportStorageFailure(
+                                            "Ошибка сохранения Wi-Fi: ${error.javaClass.simpleName}"
                                         )
                                     }
                                 }
                             }
+                            refreshSavedSessions()
+                        } else {
+                            finishActiveSession(currentSnapshot)
                         }
-                        if (!current.isRecording) {
-                            finishActiveSession(
-                                MotionSensorSnapshot(
-                                    isRecording = false,
-                                    routePoints = current.routePoints,
-                                    routeSteps = current.routeSteps,
-                                    routeDistanceMeters = current.routeDistanceMeters
-                                )
-                            )
-                        }
-                        refreshSavedSessions()
                     }
                 }
                 .onFailure { error ->
@@ -331,14 +322,14 @@ class MainActivity : ComponentActivity() {
 
     private fun finishActiveSession(snapshot: MotionSensorSnapshot) {
         val sessionId = activeSessionId ?: return
-        // Reinsert the complete bounded snapshot with conflict-ignore so an earlier
-        // transient write failure cannot leave permanent sequence gaps.
-        persistedRoutePointCount = 0
-        persistRouteSnapshot(snapshot)
+        // Reinsert the complete bounded snapshots with conflict-ignore before
+        // closing the session, repairing any gaps from failed incremental writes.
+        val routeSnapshot = snapshot.routePoints.toList()
         val markerSnapshot = screenState.value.wifiMarkers.toList()
         activeSessionId = null
         databaseExecutor.execute {
             runCatching {
+                sessionDatabase.appendRoutePoints(sessionId, 0, routeSnapshot)
                 sessionDatabase.appendWifiMarkers(sessionId, markerSnapshot)
                 sessionDatabase.finishSession(
                     sessionId = sessionId,
@@ -348,15 +339,24 @@ class MainActivity : ComponentActivity() {
                 sessionDatabase.listSessions()
             }.onSuccess { sessions ->
                 runOnUiThread {
-                    screenState.value = screenState.value.copy(savedSessions = sessions)
+                    screenState.value = screenState.value.copy(
+                        savedSessions = sessions,
+                        storageStatus = null
+                    )
                 }
             }.onFailure { error ->
                 runOnUiThread {
                     screenState.value = screenState.value.copy(
-                        routeStatus = "Не удалось завершить сохранение: ${error.javaClass.simpleName}"
+                        storageStatus = "Не удалось завершить сохранение: ${error.javaClass.simpleName}"
                     )
                 }
             }
+        }
+    }
+
+    private fun reportStorageFailure(message: String) {
+        runOnUiThread {
+            screenState.value = screenState.value.copy(storageStatus = message)
         }
     }
 
