@@ -249,6 +249,14 @@ class MainActivity : ComponentActivity() {
                                 routeDistanceMeters = current.routeDistanceMeters
                             )
                         )
+                        if (current.wifiMarkers.isNotEmpty()) {
+                            val existingMarkers = current.wifiMarkers.toList()
+                            databaseExecutor.execute {
+                                runCatching {
+                                    sessionDatabase.appendWifiMarkers(sessionId, existingMarkers)
+                                }
+                            }
+                        }
                         if (!current.isRecording) {
                             finishActiveSession(
                                 MotionSensorSnapshot(
@@ -283,7 +291,7 @@ class MainActivity : ComponentActivity() {
         val steps = snapshot.routeSteps
         val distance = snapshot.routeDistanceMeters
 
-        if (newPoints.isNotEmpty() || steps >= 0) {
+        if (newPoints.isNotEmpty() || !snapshot.isRecording) {
             databaseExecutor.execute {
                 runCatching {
                     if (newPoints.isNotEmpty()) {
