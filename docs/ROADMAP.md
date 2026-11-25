@@ -25,14 +25,14 @@ This roadmap defines a sequence of deliverable milestones. It is a plan, not a c
 
 ## Phase 2 — Android acquisition prototype
 
-- [ ] Create Kotlin Android app using Jetpack Compose and Material 3.
-- [ ] Implement permission and lifecycle handling.
-- [ ] Collect Wi-Fi scan results and scan-result update events.
+- [x] Create initial Kotlin Android app using Jetpack Compose and Material 3.
+- [x] Implement initial fine-location permission request and Activity receiver lifecycle.
+- [x] Collect Wi-Fi scan results and scan-result update events; distinguish updated from stale/cached results.
 - [ ] Collect accelerometer, gyroscope, rotation-vector and step-counter data when available.
-- [ ] Record actual timestamps, scan age, source and permission state.
-- [ ] Show a diagnostic list of observed networks and data freshness.
+- [x] Preserve ScanResult measurement timestamp separately from receive time in the Android acquisition model.
+- [x] Show observed SSID/BSSID, RSSI, frequency band and freshness status in the initial Material 3 screen.
 
-**Exit criteria:** a session can record Wi-Fi and motion observations without pretending scans are continuous.
+**Status:** initial Wi-Fi scanner screen is implemented. Motion sensors, durable sessions and a full recording workflow remain open. Android build has not been executed in this environment.
 
 ## Phase 3 — Session format and persistence
 
