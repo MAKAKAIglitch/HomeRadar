@@ -34,7 +34,7 @@ This roadmap defines a sequence of deliverable milestones. It is a plan, not a c
 - [x] Preserve ScanResult measurement timestamp separately from receive time in the Android acquisition model.
 - [x] Show observed SSID/BSSID, RSSI, frequency band and freshness status in the initial Material 3 screen.
 
-**Status:** initial Wi-Fi scanner screen is implemented. Motion sensors, durable sessions and a full recording workflow remain open. Android build has not been executed in this environment.
+**Status:** initial Wi-Fi scanner and motion-sensor diagnostics are implemented. Durable sensor recording, ARCore pose tracking, sensor fusion and a full walk-recording workflow remain open. Android build has not been executed in this environment.
 
 ## Phase 3 — Session format and persistence
 
