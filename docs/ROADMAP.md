@@ -35,7 +35,7 @@ This roadmap defines a sequence of deliverable milestones. It is a plan, not a c
 - [x] Preserve ScanResult measurement timestamp separately from receive time in the Android acquisition model.
 - [x] Show observed SSID/BSSID, RSSI, frequency band and freshness status in the initial Material 3 screen.
 
-**Status:** the foreground prototype now records a step-and-heading PDR estimate and renders it on a blank 2D canvas. The fixed 0.68 m stride is only an initial approximation. Durable sensor recording, ARCore pose tracking, sensor fusion and persistent sessions remain open. Android build has not been executed in this environment.
+**Status:** the foreground prototype records a step-and-heading PDR estimate and renders it on a blank 2D canvas. Route points and linked Wi-Fi samples are persisted in SQLite. The fixed 0.68 m stride is only an initial approximation. Full raw sensor recording, ARCore pose tracking and sensor fusion remain open. Android build has not been executed in this environment.
 
 ## Phase 3 — Session format and persistence
 
@@ -55,10 +55,10 @@ This roadmap defines a sequence of deliverable milestones. It is a plan, not a c
 - [ ] Add tracking quality, pose timestamps and relocalization events.
 - [ ] Add IMU/PDR fallback with explicit drift warnings.
 - [x] Implement bounded pose interpolation for asynchronous Wi-Fi observations; reject interpolation across gaps or tracking loss.
-- [x] Draw the live estimated path on a blank 2D canvas (foreground PDR prototype; saving remains open).
+- [x] Draw the live estimated path on a blank 2D canvas and persist route points through the session store.
 - [ ] Add manual origin/reset and optional calibration anchors.
 
-**Status:** experimental step-detector + rotation-vector fallback is implemented. This does not meet the final visual-inertial accuracy target; ARCore/provider integration, drift correction and durable route storage remain open.
+**Status:** experimental step-detector + rotation-vector fallback is implemented and route points survive app restart. This does not meet the final visual-inertial accuracy target; ARCore/provider integration, drift correction, calibration and relocalization remain open.
 
 **Exit criteria:** a walk is represented as a timestamped trajectory with quality metadata.
 
