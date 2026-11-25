@@ -125,7 +125,7 @@ class MotionSensorDataSource(
         isRecording = true
         routePoints += RoutePoint(0.0, 0.0, routeStartTimestampNs)
         routeStatus =
-            "Оценка по шагам и магнитному направлению. Держи телефон вертикально, экраном в сторону движения. Длина шага принята за 0,68 м."
+            "Оценка по шагам и магнитному направлению. Держи телефон горизонтально экраном вверх, верхним краем по направлению движения. Длина шага принята за 0,68 м."
         addHistory(routeStartTimestampNs)
         publish(force = true)
         return true
