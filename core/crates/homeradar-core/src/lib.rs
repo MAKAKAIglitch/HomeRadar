@@ -10,7 +10,7 @@ pub mod wifi;
 
 pub use heatmap::{build_heatmap, Heatmap, HeatmapCell, HeatmapConfig, HeatmapError, PositionedSignalSample};
 pub use model::{
-    Pose2, PositionQuality, TimestampNs, Vec2, WifiObservation, WifiObservationError,
+    Pose2, PositionQuality, TimestampNs, Vec2, WifiBand, WifiObservation, WifiObservationError,
 };
-pub use trajectory::{Trajectory, TrajectoryConfig, TrajectoryError, TrajectoryPoint};
+pub use trajectory::{InterpolatedPose, Trajectory, TrajectoryConfig, TrajectoryError, TrajectoryPoint};
 pub use wifi::{group_indices_by_ssid, NetworkRelationKind};
