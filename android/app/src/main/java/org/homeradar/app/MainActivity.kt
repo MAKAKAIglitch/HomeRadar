@@ -9,12 +9,18 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
+import java.util.concurrent.Executors
 
 class MainActivity : ComponentActivity() {
     private val screenState = mutableStateOf(WifiScanUiState())
     private lateinit var wifiScanner: WifiScanDataSource
     private lateinit var motionSensors: MotionSensorDataSource
+    private lateinit var sessionDatabase: HomeRadarDatabase
+    private val databaseExecutor = Executors.newSingleThreadExecutor()
     private val mappedMarkerIds = mutableSetOf<String>()
+
+    private var activeSessionId: Long? = null
+    private var persistedRoutePointCount = 0
 
     private val locationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -42,58 +48,26 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        motionSensors = MotionSensorDataSource(this) { snapshot ->
-            screenState.value = screenState.value.copy(
-                availableMotionSensors = snapshot.availableSensors,
-                motionSampleCount = snapshot.receivedSampleCount,
-                lastMotionSensor = snapshot.lastSensorName,
-                lastMotionValues = snapshot.lastValues,
-                isRecording = snapshot.isRecording,
-                routePoints = snapshot.routePoints,
-                routeSteps = snapshot.routeSteps,
-                routeDistanceMeters = snapshot.routeDistanceMeters,
-                routeStatus = snapshot.routeStatus
-            )
-        }
-
-        wifiScanner = WifiScanDataSource(this) { snapshot ->
-            val current = screenState.value
-            val newMarkers = mutableListOf<WifiRouteMarker>()
-            var unmappedCount = 0
-
-            if (snapshot.resultsFresh && current.routePoints.isNotEmpty()) {
-                snapshot.networks.forEach { network ->
-                    val measuredAt = network.measuredAtNs
-                    val position = measuredAt?.let(motionSensors::positionAt)
-                    if (measuredAt == null || position == null) {
-                        unmappedCount += 1
-                    } else {
-                        val markerId = "${network.bssid}@$measuredAt"
-                        if (mappedMarkerIds.add(markerId)) {
-                            newMarkers += WifiRouteMarker(
-                                id = markerId,
-                                ssid = network.ssid,
-                                bssid = network.bssid,
-                                rssiDbm = network.rssiDbm,
-                                frequencyMhz = network.frequencyMhz,
-                                xMeters = position.xMeters,
-                                yMeters = position.yMeters,
-                                measuredAtNs = measuredAt
-                            )
-                        }
-                    }
+        sessionDatabase = HomeRadarDatabase(this)
+        databaseExecutor.execute {
+            runCatching {
+                sessionDatabase.recoverInterruptedSessions()
+                sessionDatabase.listSessions()
+            }.onSuccess { sessions ->
+                runOnUiThread {
+                    screenState.value = screenState.value.copy(savedSessions = sessions)
+                }
+            }.onFailure { error ->
+                runOnUiThread {
+                    screenState.value = screenState.value.copy(
+                        routeStatus = "Не удалось открыть локальную базу: ${error.javaClass.simpleName}"
+                    )
                 }
             }
-
-            screenState.value = current.copy(
-                status = snapshot.status,
-                networks = snapshot.networks,
-                resultsFresh = snapshot.resultsFresh,
-                lastReceivedAtNs = snapshot.receivedAtNs,
-                wifiMarkers = (current.wifiMarkers + newMarkers).takeLast(MAX_WIFI_MARKERS),
-                unmappedWifiSamples = current.unmappedWifiSamples + unmappedCount
-            )
         }
+
+        motionSensors = MotionSensorDataSource(this, ::onMotionSnapshot)
+        wifiScanner = WifiScanDataSource(this, ::onWifiSnapshot)
 
         screenState.value = screenState.value.copy(
             hasPermission = hasLocationPermission()
@@ -104,7 +78,8 @@ class MainActivity : ComponentActivity() {
                 HomeRadarScreen(
                     state = screenState.value,
                     onScanClick = ::requestScan,
-                    onRouteClick = ::toggleRoute
+                    onRouteClick = ::toggleRoute,
+                    onOpenSession = ::openSavedSession
                 )
             }
         }
@@ -122,6 +97,91 @@ class MainActivity : ComponentActivity() {
         motionSensors.unregister()
         wifiScanner.unregister()
         super.onStop()
+    }
+
+    override fun onDestroy() {
+        if (::sessionDatabase.isInitialized && !databaseExecutor.isShutdown) {
+            databaseExecutor.execute { sessionDatabase.close() }
+            databaseExecutor.shutdown()
+        }
+        super.onDestroy()
+    }
+
+    private fun onMotionSnapshot(snapshot: MotionSensorSnapshot) {
+        val previous = screenState.value
+        val viewingSavedSession = previous.selectedSessionId != null
+
+        var updated = previous.copy(
+            availableMotionSensors = snapshot.availableSensors,
+            motionSampleCount = snapshot.receivedSampleCount,
+            lastMotionSensor = snapshot.lastSensorName,
+            lastMotionValues = snapshot.lastValues
+        )
+
+        if (!viewingSavedSession) {
+            updated = updated.copy(
+                isRecording = snapshot.isRecording,
+                routePoints = snapshot.routePoints,
+                routeSteps = snapshot.routeSteps,
+                routeDistanceMeters = snapshot.routeDistanceMeters,
+                routeStatus = snapshot.routeStatus
+            )
+        }
+        screenState.value = updated
+
+        if (!viewingSavedSession && activeSessionId != null) {
+            persistRouteSnapshot(snapshot)
+            if (previous.isRecording && !snapshot.isRecording) {
+                finishActiveSession(snapshot)
+            }
+        }
+    }
+
+    private fun onWifiSnapshot(snapshot: WifiScanSnapshot) {
+        val current = screenState.value
+        val newMarkers = mutableListOf<WifiRouteMarker>()
+        var unmappedCount = 0
+
+        // A stopped or saved route must never receive later scan results.
+        if (current.isRecording && snapshot.resultsFresh && current.routePoints.isNotEmpty()) {
+            snapshot.networks.forEach { network ->
+                val measuredAt = network.measuredAtNs
+                val position = measuredAt?.let(motionSensors::positionAt)
+                if (measuredAt == null || position == null) {
+                    unmappedCount += 1
+                } else {
+                    val markerId = "${network.bssid}@$measuredAt"
+                    if (mappedMarkerIds.add(markerId)) {
+                        newMarkers += WifiRouteMarker(
+                            id = markerId,
+                            ssid = network.ssid,
+                            bssid = network.bssid,
+                            rssiDbm = network.rssiDbm,
+                            frequencyMhz = network.frequencyMhz,
+                            xMeters = position.xMeters,
+                            yMeters = position.yMeters,
+                            measuredAtNs = measuredAt
+                        )
+                    }
+                }
+            }
+        }
+
+        screenState.value = current.copy(
+            status = snapshot.status,
+            networks = snapshot.networks,
+            resultsFresh = snapshot.resultsFresh,
+            lastReceivedAtNs = snapshot.receivedAtNs,
+            wifiMarkers = (current.wifiMarkers + newMarkers).takeLast(MAX_WIFI_MARKERS),
+            unmappedWifiSamples = current.unmappedWifiSamples + unmappedCount
+        )
+
+        val sessionId = activeSessionId
+        if (sessionId != null && newMarkers.isNotEmpty()) {
+            databaseExecutor.execute {
+                runCatching { sessionDatabase.appendWifiMarkers(sessionId, newMarkers) }
+            }
+        }
     }
 
     private fun hasLocationPermission(): Boolean =
@@ -159,12 +219,159 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startRoute() {
+        activeSessionId = null
+        persistedRoutePointCount = 0
         mappedMarkerIds.clear()
         screenState.value = screenState.value.copy(
+            selectedSessionId = null,
+            routePoints = emptyList(),
             wifiMarkers = emptyList(),
-            unmappedWifiSamples = 0
+            routeSteps = 0,
+            routeDistanceMeters = 0.0,
+            unmappedWifiSamples = 0,
+            routeStatus = "Подготавливаем запись…"
         )
-        motionSensors.startRoute()
+
+        if (!motionSensors.startRoute()) return
+
+        databaseExecutor.execute {
+            runCatching { sessionDatabase.createSession() }
+                .onSuccess { sessionId ->
+                    runOnUiThread {
+                        activeSessionId = sessionId
+                        persistedRoutePointCount = 0
+                        val current = screenState.value
+                        persistRouteSnapshot(
+                            MotionSensorSnapshot(
+                                isRecording = current.isRecording,
+                                routePoints = current.routePoints,
+                                routeSteps = current.routeSteps,
+                                routeDistanceMeters = current.routeDistanceMeters
+                            )
+                        )
+                        if (!current.isRecording) {
+                            finishActiveSession(
+                                MotionSensorSnapshot(
+                                    isRecording = false,
+                                    routePoints = current.routePoints,
+                                    routeSteps = current.routeSteps,
+                                    routeDistanceMeters = current.routeDistanceMeters
+                                )
+                            )
+                        }
+                        refreshSavedSessions()
+                    }
+                }
+                .onFailure { error ->
+                    runOnUiThread {
+                        motionSensors.stopRoute()
+                        screenState.value = screenState.value.copy(
+                            routeStatus = "Не удалось создать сессию: ${error.javaClass.simpleName}"
+                        )
+                    }
+                }
+        }
+    }
+
+    private fun persistRouteSnapshot(snapshot: MotionSensorSnapshot) {
+        val sessionId = activeSessionId ?: return
+        val startSequence = persistedRoutePointCount
+        val newPoints = snapshot.routePoints.drop(startSequence)
+        if (newPoints.isNotEmpty()) {
+            persistedRoutePointCount += newPoints.size
+        }
+        val steps = snapshot.routeSteps
+        val distance = snapshot.routeDistanceMeters
+
+        if (newPoints.isNotEmpty() || steps >= 0) {
+            databaseExecutor.execute {
+                runCatching {
+                    if (newPoints.isNotEmpty()) {
+                        sessionDatabase.appendRoutePoints(sessionId, startSequence, newPoints)
+                    }
+                    sessionDatabase.updateProgress(sessionId, steps, distance)
+                }
+            }
+        }
+    }
+
+    private fun finishActiveSession(snapshot: MotionSensorSnapshot) {
+        val sessionId = activeSessionId ?: return
+        persistRouteSnapshot(snapshot)
+        activeSessionId = null
+        databaseExecutor.execute {
+            runCatching {
+                sessionDatabase.finishSession(
+                    sessionId = sessionId,
+                    steps = snapshot.routeSteps,
+                    distanceMeters = snapshot.routeDistanceMeters
+                )
+                sessionDatabase.listSessions()
+            }.onSuccess { sessions ->
+                runOnUiThread {
+                    screenState.value = screenState.value.copy(savedSessions = sessions)
+                }
+            }.onFailure { error ->
+                runOnUiThread {
+                    screenState.value = screenState.value.copy(
+                        routeStatus = "Не удалось завершить сохранение: ${error.javaClass.simpleName}"
+                    )
+                }
+            }
+        }
+    }
+
+    private fun refreshSavedSessions() {
+        databaseExecutor.execute {
+            runCatching { sessionDatabase.listSessions() }
+                .onSuccess { sessions ->
+                    runOnUiThread {
+                        screenState.value = screenState.value.copy(savedSessions = sessions)
+                    }
+                }
+        }
+    }
+
+    private fun openSavedSession(sessionId: Long) {
+        if (screenState.value.isRecording) return
+        databaseExecutor.execute {
+            runCatching { sessionDatabase.loadSession(sessionId) to sessionDatabase.listSessions() }
+                .onSuccess { (stored, sessions) ->
+                    runOnUiThread {
+                        if (stored == null) {
+                            screenState.value = screenState.value.copy(
+                                routeStatus = "Сохранённый проход больше не найден.",
+                                savedSessions = sessions
+                            )
+                        } else {
+                            val summary = stored.summary
+                            val statusLabel = when (summary.status) {
+                                "interrupted" -> "Восстановлен после неожиданного завершения"
+                                "finished" -> "Сохранённый проход"
+                                else -> "Проход в процессе"
+                            }
+                            screenState.value = screenState.value.copy(
+                                isRecording = false,
+                                selectedSessionId = sessionId,
+                                routePoints = stored.routePoints,
+                                wifiMarkers = stored.wifiMarkers,
+                                routeSteps = summary.steps,
+                                routeDistanceMeters = summary.distanceMeters,
+                                routeStatus = statusLabel,
+                                unmappedWifiSamples = 0,
+                                savedSessions = sessions
+                            )
+                        }
+                    }
+                }
+                .onFailure { error ->
+                    runOnUiThread {
+                        screenState.value = screenState.value.copy(
+                            routeStatus = "Не удалось загрузить проход: ${error.javaClass.simpleName}"
+                        )
+                    }
+                }
+        }
     }
 
     private companion object {
