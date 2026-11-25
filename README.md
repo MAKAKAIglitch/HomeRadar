@@ -1,88 +1,105 @@
 # HomeRadar
 
-**HomeRadar** is an Android-first, local-first indoor radio-mapping project. Walk through a building with a phone and HomeRadar records the estimated path, samples nearby wireless networks, and builds signal maps along that path.
+**HomeRadar** — локальная система картирования Wi-Fi-сигнала по маршруту движения смартфона.
 
-The project is designed around a reusable **Rust core** and a polished **Kotlin / Jetpack Compose** Android application.
+Пользователь проходит по дому или другому помещению, а приложение должно:
+- оценивать перемещение телефона по камере и инерциальным датчикам;
+- собирать доступные Wi-Fi-наблюдения;
+- привязывать измерения к координатам и времени;
+- рисовать линию пройденного маршрута;
+- строить тепловые слои сигнала вдоль маршрута;
+- сохранять проходы и сравнивать результаты в разные дни.
 
-> **No floor plan is required.** HomeRadar maps the walk itself: a trajectory in a local coordinate space, with radio measurements attached to positions. A user may optionally add labels or reference points, but drawing rooms, walls, or doors is not part of the required workflow.
+> **План здания не нужен.** Основная карта — свободное 2D-поле с траекторией, точками измерений и слоями сигнала. Обязательного распознавания комнат, стен, дверей или ручного черчения плана нет.
 
-## Goals
+## Текущее состояние
 
-- Draw and save a 2D walking trajectory without requiring a floor plan.
-- Attach Wi-Fi observations to positions with timestamps and uncertainty.
-- Visualize signal strength as heatmaps along and around the recorded path.
-- Distinguish SSIDs, BSSIDs, radios, physical access points, and inferred network groups.
-- Handle mesh systems, roaming, multi-band radios, repeated BSSIDs, and changing network layouts without unsafe assumptions.
-- Save immutable scan sessions and compare repeated walks over time.
-- Fuse camera-based visual-inertial tracking, phone motion sensors, and radio observations.
-- Keep user data on-device by default; provide explicit export/import.
-- Make the Rust core reusable by other applications independently of Android.
+Проект находится на ранней стадии реализации.
 
-## Current project status
+**Уже есть:**
+- начальный переносимый Rust Core;
+- типы временных меток, позиций и Wi-Fi-наблюдений;
+- построение траектории с разрывами при потере tracking;
+- ограниченная интерполяция позиции на время Wi-Fi-измерения;
+- классификация частот 2.4 / 5 / 6 GHz;
+- агрегация RSSI по пространственным ячейкам без выдумывания данных в пустых областях;
+- Android-приложение на Kotlin и Jetpack Compose Material 3;
+- первый Wi-Fi scanner с отображением SSID, BSSID, RSSI, частоты и свежести результатов.
 
-This repository contains the first portable Rust core and an initial Android application with a Material 3 Wi-Fi scanner. The walking-position provider (ARCore/IMU), live trajectory screen, persistence and Rust/Kotlin bridge are not implemented yet. See [docs/ROADMAP.md](docs/ROADMAP.md) for verified progress.
+**Ещё не реализовано:**
+- ARCore camera tracking и сбор IMU;
+- объединение камеры, инерции и других источников в единый локализатор;
+- отображение живой траектории в Android UI;
+- запись и восстановление сессий;
+- SQLite и формат проекта `.homeradar`;
+- полноценная идентификация физических AP и Mesh-топологии;
+- Rust/Kotlin bridge через UniFFI.
 
-## Architecture
+Смотри [план разработки](docs/ROADMAP.md).
 
-- **Android app (Kotlin):** permissions, Wi-Fi scan access, camera/AR session, IMU acquisition, lifecycle, UI, project management.
-- **Rust core:** domain models, time/coordinate handling, sensor fusion, trajectory processing, network identity/grouping, heatmap generation, session validation and export.
-- **Bridge:** UniFFI is the preferred Rust ↔ Kotlin boundary, subject to a small integration prototype.
-- **UI:** Jetpack Compose + Material 3 / Material You.
-- **Persistence:** SQLite for indexed observations and metadata; files for larger session assets; portable `.homeradar` project archive.
+## Архитектура
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/CORE-API.md](docs/CORE-API.md), [docs/PROJECT-FORMAT.md](docs/PROJECT-FORMAT.md), and the dated [research notes](docs/research/25-11-2026.md).
+- **Rust Core** — модели данных, траектория, временная синхронизация, обработка Wi-Fi, группировка сетей и Heatmap. Ядро не зависит от Android.
+- **Kotlin Android** — разрешения, Wi-Fi API, камера, сенсоры, жизненный цикл и интерфейс.
+- **Jetpack Compose + Material 3** — Android UI и Material You.
+- **ARCore** — планируемый источник visual-inertial pose на поддерживаемых устройствах.
+- **UniFFI** — предпочтительный вариант связи Rust и Kotlin после отдельного прототипа.
+- **Локальное хранение** — SQLite и архив проекта `.homeradar` на следующих этапах.
 
-## Core principles
+## Важные принципы
 
-1. **Trajectory first:** no mandatory floor-plan creation or room reconstruction.
-2. **Measurements are evidence:** retain raw observations and their timestamps; never silently present stale scans as live data.
-3. **Uncertainty is visible:** positions, associations, and heatmap values carry confidence/quality metadata.
-4. **Inference is not fact:** shared SSIDs and similar signal patterns do not prove that radios belong to the same mesh.
-5. **Repeatable sessions:** preserve raw sessions so algorithms can be improved and maps regenerated later.
-6. **Local-first:** no account, cloud backend, telemetry, or automatic upload is required.
-7. **Reusable core:** Android-specific APIs stay outside the portable Rust domain layer.
+1. **Trajectory-first:** карта маршрута важнее модели помещения.
+2. **Никаких выдуманных измерений:** исходное время Wi-Fi-измерения хранится отдельно от времени получения результата.
+3. **Старые результаты остаются старыми:** кэшированные Wi-Fi scans не маркируются свежими.
+4. **Mesh — это гипотеза, пока нет доказательств:** одинаковый SSID не означает один физический роутер.
+5. **Неопределённость видна:** потеря tracking и большие разрывы создают отдельные сегменты траектории.
+6. **Локально по умолчанию:** нет обязательного аккаунта, облака, телеметрии или автоматической загрузки.
+7. **Повторная обработка:** исходные наблюдения должны сохраняться отдельно от построенных карт.
 
-## Planned capabilities
-
-- Live walk recording and trajectory visualization.
-- Wi-Fi observations: SSID, BSSID, frequency, channel where available, RSSI, capabilities, timestamp, and source.
-- Separate 2.4 GHz, 5 GHz, and 6 GHz layers where the device and OS expose the data.
-- Network grouping with confidence and evidence.
-- Mesh/roaming analysis using observed behavior and optional router integrations.
-- Signal heatmaps with interpolation limits and sample-density overlays.
-- Session replay, route alignment, and before/after comparison.
-- Optional AR view for showing the current track and nearby observations.
-- JSON/CSV exports and complete project archive import/export.
-
-## Platform reality
-
-Android controls Wi-Fi scan frequency and the availability of some radio metadata. Camera/IMU tracking can run at a higher rate than Wi-Fi scanning, so each Wi-Fi sample must be associated with a nearby pose while preserving its actual timestamp and uncertainty. See [docs/ANDROID-PLATFORM.md](docs/ANDROID-PLATFORM.md).
-
-A phone generally cannot discover a complete mesh topology from passive Wi-Fi scans alone. HomeRadar will distinguish observed facts from inferred relationships and may add opt-in integrations for routers that expose topology information.
-
-## Repository layout
+## Структура репозитория
 
 ```text
-android/                 Kotlin Android application
-core/                    Rust workspace
-  crates/
-    homeradar-types/     Shared domain types
-    homeradar-localize/  Pose and sensor-fusion interfaces/algorithms
-    homeradar-wifi/      Wi-Fi observations and network identity
-    homeradar-trajectory/Track processing and alignment
-    homeradar-heatmap/   Spatial signal aggregation/render data
-    homeradar-session/   Session persistence and validation
-    homeradar-ffi/       UniFFI-facing API
-docs/                    Specifications and engineering decisions
-examples/                Core usage examples
+android/
+  app/                         Android-приложение
+core/
+  Cargo.toml                   Rust workspace
+  crates/homeradar-core/
+    src/model.rs               Временные метки, pose, Wi-Fi observation
+    src/trajectory.rs          Траектория и интерполяция
+    src/wifi.rs                 Группировка SSID
+    src/heatmap.rs              Пространственная агрегация RSSI
+    examples/synthetic_walk.rs  Синтетический пример
+docs/
+  research/                    Датированные технические исследования
+AGENTS.md                      Правила разработки и конфиденциальности
 ```
 
-The Rust crate contains initial domain types, trajectory processing/interpolation, conservative SSID grouping, frequency-band classification, spatial RSSI aggregation, and unit tests. Android currently acquires and displays Wi-Fi scan results with freshness metadata. Camera/IMU localization, mapping UI, persistence and FFI remain planned.
+## Сборка Rust Core
 
-## Development status
+Из корня репозитория:
 
-See [the roadmap](docs/ROADMAP.md) for phased implementation and acceptance criteria. No scheduled GitHub Actions are required; local builds and tests are supported.
+```bash
+cd core
+cargo test --workspace
+cargo run -p homeradar-core --example synthetic_walk
+```
 
-## License
+На текущем этапе Rust Core использует только стандартную библиотеку.
 
-The project is intended to use the MIT License. See [LICENSE](LICENSE).
+## Сборка Android-приложения
+
+Требуются JDK 17, Android SDK Platform 37 и Gradle 9.5.0. Подробности и ограничения сборки находятся в [android/README.md](android/README.md).
+
+## Ограничения Android Wi-Fi
+
+Android ограничивает частоту сканирований. `WifiManager.startScan()` устарел и может быть отклонён системой; результаты могут поступать из системных сканирований или кэша. Поэтому Wi-Fi — редкий источник измерений, а не непрерывный сенсор. Приложение сохраняет timestamp измерения и отдельно показывает, подтверждено ли обновление.
+
+Пассивные сканы сами по себе не раскрывают гарантированно полную топологию Mesh/backhaul. Для этого в будущем могут появиться отдельные интеграции с роутерами.
+
+## Исследования и правила
+
+Перед новыми техническими решениями сначала проверяй `docs/research/`. Новые исследования сохраняются в файлы с датой `ДД-ММ-ГГГГ.md`. Правила конфиденциальности и работы с репозиторием находятся в [AGENTS.md](AGENTS.md).
+
+## Лицензия
+
+MIT. См. [LICENSE](LICENSE).
