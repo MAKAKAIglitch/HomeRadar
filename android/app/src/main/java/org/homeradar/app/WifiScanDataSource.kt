@@ -42,8 +42,6 @@ data class WifiScanSnapshot(
 
 data class WifiScanUiState(
     val hasPermission: Boolean = false,
-    val connectedNetworkSsid: String? = null,
-    val selectedNetworkSsid: String? = null,
     val isArMode: Boolean = false,
     val arStatus: String = "Камера не запущена.",
     val status: String = "Сканирование ещё не запускалось.",
@@ -107,28 +105,6 @@ class WifiScanDataSource(
         if (!registered) return
         runCatching { appContext.unregisterReceiver(receiver) }
         registered = false
-    }
-
-    /**
-     * Returns the SSID of the currently active Wi-Fi transport.
-     * Android 12+ exposes WifiInfo through NetworkCapabilities.transportInfo.
-     */
-    fun connectedNetworkSsid(): String? {
-        val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val connectivityManager =
-                appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-            val network = connectivityManager.activeNetwork ?: return null
-            val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return null
-            if (!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) return null
-            capabilities.transportInfo as? WifiInfo
-        } else {
-            @Suppress("DEPRECATION")
-            wifiManager.connectionInfo
-        } ?: return null
-
-        val ssid = info.ssid ?: return null
-        if (ssid == WifiManager.UNKNOWN_SSID || ssid == "<unknown ssid>") return null
-        return ssid.removeSurrounding("\"").takeIf { it.isNotBlank() }
     }
 
     @Suppress("DEPRECATION")
