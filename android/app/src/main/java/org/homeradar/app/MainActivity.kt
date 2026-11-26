@@ -614,7 +614,7 @@ class MainActivity : ComponentActivity() {
     private companion object {
         const val MAX_WIFI_MARKERS = 3_000
         const val ALL_NETWORKS = "*"
-        const val WIFI_SCAN_INTERVAL_MS = 30_000L
+        const val WIFI_SCAN_INTERVAL_MS = 35_000L
         const val PREF_TARGET_SSID = "target_wifi_ssid"
     }
 }
