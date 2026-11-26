@@ -76,6 +76,9 @@ fun HomeRadarScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
+                WifiScannerCard(state, onScanClick, onTargetNetworkChange)
+            }
+            item {
                 RouteControlCard(state, onRouteClick)
             }
             item {
@@ -83,9 +86,6 @@ fun HomeRadarScreen(
             }
             item {
                 SavedSessionsCard(state, onOpenSession, onExportSession, onImportSession)
-            }
-            item {
-                WifiScannerCard(state, onScanClick, onTargetNetworkChange)
             }
             item {
                 MotionDiagnosticsCard(state)
@@ -475,7 +475,10 @@ private fun WifiScannerCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            OutlinedButton(onClick = { menuExpanded.value = true }) {
+            OutlinedButton(
+                onClick = { menuExpanded.value = true },
+                enabled = !state.isRecording
+            ) {
                 Text("Сеть: " + if (selected == "*") "Все сети" else selected)
             }
             DropdownMenu(
