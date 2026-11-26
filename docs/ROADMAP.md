@@ -37,7 +37,7 @@ This roadmap defines a sequence of deliverable milestones. It is a plan, not a c
 - [x] Detect the currently connected Wi-Fi SSID where Android permissions allow it; allow choosing a target SSID or all networks.
 - [x] Filter route markers by the selected SSID while preserving BSSID-level observations.
 
-**Status:** the foreground prototype records a step-and-heading PDR estimate and renders it on a blank 2D canvas. Route points and linked Wi-Fi samples are persisted in SQLite. The fixed 0.68 m stride is only an initial approximation. Full raw sensor recording, ARCore pose tracking and sensor fusion remain open. Android build has not been executed in this environment.
+**Status:** the initial step-and-heading PDR prototype remains in the codebase, but the active mapping flow now uses an ARCore camera session and timestamped camera poses. Route points and linked Wi-Fi samples are persisted in SQLite. Full raw sensor recording, tracking-quality persistence, relocalization and sensor fusion remain open. Android build has not been executed in this environment.
 
 ## Phase 3 — Session format and persistence
 
@@ -75,7 +75,7 @@ This roadmap defines a sequence of deliverable milestones. It is a plan, not a c
 - [ ] Expose sample density and confidence.
 - [ ] Test with synthetic paths and controlled real-world recordings.
 
-**Status:** the Android prototype renders and persists fresh scan samples as points on the estimated route. Rust/Core heatmap processing exists, but per-network/per-band selection, configurable cell aggregation, density/confidence overlays and full regeneration from raw session observations are not yet wired to Android.
+**Status:** the Android prototype renders and persists fresh scan samples as points on the ARCore route and filters the route markers by the selected SSID. Rust/Core heatmap processing exists, but per-band layers, configurable cell aggregation, density/confidence overlays and full regeneration from raw session observations are not yet wired to Android.
 
 **Exit criteria:** signal maps can be regenerated from raw session data.
 
