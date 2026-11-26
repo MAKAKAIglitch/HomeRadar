@@ -198,7 +198,7 @@ private fun RouteControlCard(
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        "${state.routeSteps} шагов",
+                        "${state.routePoints.size} позиций",
                         style = MaterialTheme.typography.titleSmall
                     )
                     Text(
