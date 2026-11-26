@@ -34,6 +34,8 @@ This roadmap defines a sequence of deliverable milestones. It is a plan, not a c
 - [x] Request ACTIVITY_RECOGNITION at point of use on Android 10+ for the hardware step detector.
 - [x] Preserve ScanResult measurement timestamp separately from receive time in the Android acquisition model.
 - [x] Show observed SSID/BSSID, RSSI, frequency band and freshness status in the initial Material 3 screen.
+- [x] Detect the currently connected Wi-Fi SSID where Android permissions allow it; allow choosing a target SSID or all networks.
+- [x] Filter route markers by the selected SSID while preserving BSSID-level observations.
 
 **Status:** the foreground prototype records a step-and-heading PDR estimate and renders it on a blank 2D canvas. Route points and linked Wi-Fi samples are persisted in SQLite. The fixed 0.68 m stride is only an initial approximation. Full raw sensor recording, ARCore pose tracking and sensor fusion remain open. Android build has not been executed in this environment.
 
@@ -52,6 +54,7 @@ This roadmap defines a sequence of deliverable milestones. It is a plan, not a c
 ## Phase 4 — Trajectory tracking
 
 - [ ] Add ARCore tracking adapter where supported.
+- [x] Add an in-session rear-camera preview (CameraX); this is camera preview only, not AR pose tracking.
 - [ ] Add tracking quality, pose timestamps and relocalization events.
 - [ ] Add IMU/PDR fallback with explicit drift warnings.
 - [x] Implement bounded pose interpolation for asynchronous Wi-Fi observations; reject interpolation across gaps or tracking loss.
