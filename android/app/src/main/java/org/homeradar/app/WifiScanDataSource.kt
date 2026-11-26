@@ -15,8 +15,6 @@ import android.os.Build
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
 
-internal const val ALL_NETWORKS = "*"
-
 const val ALL_NETWORKS = "*"
 
 data class WifiNetworkRow(
