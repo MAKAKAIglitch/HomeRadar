@@ -53,15 +53,16 @@ This roadmap defines a sequence of deliverable milestones. It is a plan, not a c
 
 ## Phase 4 — Trajectory tracking
 
-- [ ] Add ARCore tracking adapter where supported.
-- [x] Add an in-session rear-camera preview (CameraX); this is camera preview only, not AR pose tracking.
-- [ ] Add tracking quality, pose timestamps and relocalization events.
-- [ ] Add IMU/PDR fallback with explicit drift warnings.
+- [x] Add ARCore session adapter and full-screen camera background on supported devices.
+- [x] Read ARCore camera pose only while TrackingState.TRACKING and convert horizontal X/Z to the local route plane.
+- [ ] Add explicit tracking-quality timeline, relocalization events and recovery markers.
+- [ ] Add IMU/PDR fallback selection with explicit drift warnings for devices without ARCore.
 - [x] Implement bounded pose interpolation for asynchronous Wi-Fi observations; reject interpolation across gaps or tracking loss.
-- [x] Draw the live estimated path on a blank 2D canvas and persist route points through the session store.
+- [x] Draw the live estimated path on a blank 2D canvas and persist AR route points through the session store.
 - [ ] Add manual origin/reset and optional calibration anchors.
+- [ ] Validate ARCore frame lifecycle, pose stability and Wi-Fi timestamp association on physical devices.
 
-**Status:** experimental step-detector + rotation-vector fallback is implemented and route points survive app restart. This does not meet the final visual-inertial accuracy target; ARCore/provider integration, drift correction, calibration and relocalization remain open.
+**Status:** ARCore camera rendering and pose-to-route acquisition are implemented in Kotlin. The same ARCore session supplies both the camera image and camera pose; CameraX has been removed to avoid opening the camera twice. Pose callbacks use Android elapsed-realtime at frame-processing time so Wi-Fi scan timestamps can be associated on the same clock. This timing is approximate and still requires device validation. Walls/floor-plan reconstruction, relocalization quality, calibration, and automatic non-AR fallback remain open.
 
 **Exit criteria:** a walk is represented as a timestamped trajectory with quality metadata.
 
