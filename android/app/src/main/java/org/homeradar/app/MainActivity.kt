@@ -366,7 +366,7 @@ class MainActivity : ComponentActivity() {
             return
         }
         isCreatingSession = true
-        // Start with an immediate request, then ask Android no more often than every 30 seconds.
+        // Start with an immediate request, then ask Android no more often than every 35 seconds.
         wifiScanner.requestScan()
         scanHandler.removeCallbacks(scanTicker)
         scanHandler.postDelayed(scanTicker, WIFI_SCAN_INTERVAL_MS)
