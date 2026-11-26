@@ -49,6 +49,18 @@ class MainActivity : ComponentActivity() {
         if (granted) wifiScanner.requestScan()
     }
 
+    private val cameraPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            continueRouteStart()
+        } else {
+            screenState.value = screenState.value.copy(
+                routeStatus = "Для режима картирования требуется доступ к камере."
+            )
+        }
+    }
+
     private val activityRecognitionPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -95,6 +107,7 @@ class MainActivity : ComponentActivity() {
                     state = screenState.value,
                     onScanClick = ::requestScan,
                     onRouteClick = ::toggleRoute,
+                    onTargetNetworkChange = ::selectTargetNetwork,
                     onOpenSession = ::openSavedSession,
                     onExportSession = ::exportSession,
                     onImportSession = ::launchImportSession
@@ -159,10 +172,20 @@ class MainActivity : ComponentActivity() {
         val current = screenState.value
         val newMarkers = mutableListOf<WifiRouteMarker>()
         var unmappedCount = 0
+        val selectedSsid = current.selectedNetworkSsid ?: snapshot.connectedSsid
+        val effectiveState = current.copy(
+            connectedSsid = snapshot.connectedSsid,
+            selectedNetworkSsid = current.selectedNetworkSsid ?: snapshot.connectedSsid
+        )
+        val targetNetworks = when (selectedSsid) {
+            ALL_NETWORKS -> snapshot.networks
+            null -> emptyList()
+            else -> snapshot.networks.filter { it.ssid == selectedSsid }
+        }
 
         // A stopped or saved route must never receive later scan results.
         if (current.isRecording && snapshot.resultsFresh && current.routePoints.isNotEmpty()) {
-            snapshot.networks.forEach { network ->
+            targetNetworks.forEach { network ->
                 val measuredAt = network.measuredAtNs
                 val position = measuredAt?.let(motionSensors::positionAt)
                 if (measuredAt == null || position == null) {
@@ -185,7 +208,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        screenState.value = current.copy(
+        screenState.value = effectiveState.copy(
             status = snapshot.status,
             networks = snapshot.networks,
             resultsFresh = snapshot.resultsFresh,
@@ -222,6 +245,10 @@ class MainActivity : ComponentActivity() {
                 Manifest.permission.ACTIVITY_RECOGNITION
             ) == PackageManager.PERMISSION_GRANTED
 
+    private fun selectTargetNetwork(ssid: String) {
+        screenState.value = screenState.value.copy(selectedNetworkSsid = ssid)
+    }
+
     private fun requestScan() {
         if (!hasLocationPermission()) {
             locationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -236,6 +263,14 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            cameraPermission.launch(Manifest.permission.CAMERA)
+            return
+        }
+        continueRouteStart()
+    }
+
+    private fun continueRouteStart() {
         if (!hasActivityRecognitionPermission()) {
             activityRecognitionPermission.launch(Manifest.permission.ACTIVITY_RECOGNITION)
             return
@@ -505,5 +540,6 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val MAX_WIFI_MARKERS = 3_000
+        const val ALL_NETWORKS = "*"
     }
 }
