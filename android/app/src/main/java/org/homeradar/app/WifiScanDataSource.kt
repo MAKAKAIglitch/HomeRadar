@@ -1,7 +1,5 @@
 package org.homeradar.app
 
-internal const val ALL_NETWORKS = "*"
-
 import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -16,6 +14,8 @@ import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
+
+internal const val ALL_NETWORKS = "*"
 
 const val ALL_NETWORKS = "*"
 
