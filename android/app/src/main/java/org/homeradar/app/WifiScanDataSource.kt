@@ -192,7 +192,12 @@ class WifiScanDataSource(
             val capabilities = network?.let(connectivity::getNetworkCapabilities)
             val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 if (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) != true) return null
-                capabilities.transportInfo as? WifiInfo
+                val transportInfo = capabilities.transportInfo as? WifiInfo
+                // Some Android versions redact SSID from NetworkCapabilities.transportInfo.
+                // Fall back to the deprecated API while the required location permission is held.
+                transportInfo?.takeIf {
+                    it.ssid.isNotBlank() && it.ssid != WifiManager.UNKNOWN_SSID
+                } ?: wifiManager.connectionInfo
             } else {
                 wifiManager.connectionInfo
             }
