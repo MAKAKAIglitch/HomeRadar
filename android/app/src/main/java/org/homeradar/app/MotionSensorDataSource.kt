@@ -14,6 +14,7 @@ import java.util.TreeMap
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 data class MotionSensorSnapshot(
     val availableSensors: List<String> = emptyList(),
@@ -71,6 +72,11 @@ class MotionSensorDataSource(
     private var positionX = 0.0
     private var positionY = 0.0
     private var stepCount = 0
+    private var routeDistanceMeters = 0.0
+    private var isArRoute = false
+    private var arOriginX: Double? = null
+    private var arOriginZ: Double? = null
+    private var lastArPoseTimestampNs = 0L
     private val estimatedStepLengthMeters = 0.68
 
     val recording: Boolean
@@ -120,6 +126,11 @@ class MotionSensorDataSource(
         positionX = 0.0
         positionY = 0.0
         stepCount = 0
+        routeDistanceMeters = 0.0
+        isArRoute = false
+        arOriginX = null
+        arOriginZ = null
+        lastArPoseTimestampNs = 0L
         routeStartTimestampNs = SystemClock.elapsedRealtimeNanos()
         originAzimuthRad = latestAzimuthRad
         isRecording = true
@@ -131,10 +142,83 @@ class MotionSensorDataSource(
         return true
     }
 
+    /**
+     * Starts a route whose positions are supplied by ARCore camera tracking.
+     * This mode does not depend on the step detector or activity-recognition permission.
+     */
+    fun startArRoute(): Boolean {
+        routePoints.clear()
+        synchronized(poseHistory) { poseHistory.clear() }
+        positionX = 0.0
+        positionY = 0.0
+        stepCount = 0
+        routeDistanceMeters = 0.0
+        arOriginX = null
+        arOriginZ = null
+        lastArPoseTimestampNs = 0L
+        routeStartTimestampNs = SystemClock.elapsedRealtimeNanos()
+        isArRoute = true
+        isRecording = true
+        routeStatus = "Ожидаем первую отслеживаемую позу ARCore…"
+        publish(force = true)
+        return true
+    }
+
+    /**
+     * Adds a world-space ARCore camera pose to the local route.
+     * ARCore's horizontal X/Z plane is converted to the app's local X/Y plane.
+     */
+    fun recordArPose(timestampNs: Long, worldX: Double, worldZ: Double) {
+        if (!isRecording || !isArRoute || timestampNs < routeStartTimestampNs) return
+        if (timestampNs <= lastArPoseTimestampNs) return
+
+        if (arOriginX == null || arOriginZ == null) {
+            arOriginX = worldX
+            arOriginZ = worldZ
+            positionX = 0.0
+            positionY = 0.0
+            lastArPoseTimestampNs = timestampNs
+            routePoints += RoutePoint(0.0, 0.0, timestampNs)
+            addHistory(timestampNs)
+            routeStatus = "ARCore отслеживает движение. Можно идти по помещению."
+            publish(force = true)
+            return
+        }
+
+        val nextX = worldX - (arOriginX ?: worldX)
+        val nextY = -(worldZ - (arOriginZ ?: worldZ))
+        val dx = nextX - positionX
+        val dy = nextY - positionY
+        val distance = sqrt(dx * dx + dy * dy)
+        val elapsedNs = timestampNs - lastArPoseTimestampNs
+
+        positionX = nextX
+        positionY = nextY
+        routeDistanceMeters += distance
+        lastArPoseTimestampNs = timestampNs
+        addHistory(timestampNs)
+
+        val lastPoint = routePoints.lastOrNull()
+        val shouldAppend = lastPoint == null ||
+            distance >= 0.025 ||
+            timestampNs - lastPoint.timestampNs >= 300_000_000L
+        if (shouldAppend && routePoints.size < MAX_ROUTE_POINTS) {
+            routePoints += RoutePoint(positionX, positionY, timestampNs)
+        } else if (routePoints.size >= MAX_ROUTE_POINTS) {
+            routeStatus = "Достигнут предел точек маршрута; карта продолжает обновляться ограниченно."
+        }
+
+        if (elapsedNs > 0L) publish()
+    }
+
     fun stopRoute() {
         if (!isRecording) return
         isRecording = false
-        routeStatus = "Проход остановлен. Путь — приблизительная оценка по шагам и ориентации."
+        routeStatus = if (isArRoute) {
+            "AR-проход остановлен. Сохранена траектория, полученная камерой и ARCore."
+        } else {
+            "Проход остановлен. Путь — приблизительная оценка по шагам и ориентации."
+        }
         publish(force = true)
     }
 
@@ -187,14 +271,14 @@ class MotionSensorDataSource(
         SensorManager.getOrientation(rotationMatrix, orientation)
         latestAzimuthRad = orientation[0].toDouble()
 
-        if (isRecording && event.timestamp >= routeStartTimestampNs) {
+        if (isRecording && !isArRoute && event.timestamp >= routeStartTimestampNs) {
             if (originAzimuthRad == null) originAzimuthRad = latestAzimuthRad
             addHistory(event.timestamp)
         }
     }
 
     private fun onStepDetected(event: SensorEvent) {
-        if (!isRecording || event.timestamp < routeStartTimestampNs) return
+        if (!isRecording || isArRoute || event.timestamp < routeStartTimestampNs) return
 
         val currentAzimuth = latestAzimuthRad ?: return
         val initialAzimuth = originAzimuthRad ?: currentAzimuth.also {
@@ -206,6 +290,7 @@ class MotionSensorDataSource(
         positionX += sin(relativeHeading) * estimatedStepLengthMeters
         positionY += cos(relativeHeading) * estimatedStepLengthMeters
         stepCount += 1
+        routeDistanceMeters += estimatedStepLengthMeters
 
         if (routePoints.size < MAX_ROUTE_POINTS) {
             routePoints += RoutePoint(positionX, positionY, event.timestamp)
@@ -281,7 +366,7 @@ class MotionSensorDataSource(
                 isRecording = isRecording,
                 routePoints = routePoints.toList(),
                 routeSteps = stepCount,
-                routeDistanceMeters = stepCount * estimatedStepLengthMeters,
+                routeDistanceMeters = routeDistanceMeters,
                 routeStatus = routeStatus
             )
         )
