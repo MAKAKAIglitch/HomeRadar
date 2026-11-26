@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,6 +26,19 @@ class MainActivity : ComponentActivity() {
     private var isCreatingSession = false
     private var pendingExportSessionId: Long? = null
     private var pendingRouteStartAfterLocation = false
+    private val scanHandler = Handler(Looper.getMainLooper())
+    private val scanTicker = object : Runnable {
+        override fun run() {
+            val current = screenState.value
+            if (current.isArMode && current.isRecording) {
+                wifiScanner.requestScan()
+                scanHandler.postDelayed(this, WIFI_SCAN_INTERVAL_MS)
+            }
+        }
+    }
+    private val preferences by lazy {
+        getSharedPreferences("homeradar_preferences", MODE_PRIVATE)
+    }
 
     private val exportDocument = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/zip")
@@ -108,16 +123,21 @@ class MainActivity : ComponentActivity() {
         wifiScanner = WifiScanDataSource(this, ::onWifiSnapshot)
 
         screenState.value = screenState.value.copy(
-            hasPermission = hasLocationPermission()
+            hasPermission = hasLocationPermission(),
+            selectedNetworkSsid = preferences.getString(PREF_TARGET_SSID, null)
         )
 
         setContent {
             HomeRadarTheme {
                 HomeRadarScreen(
+                    activity = this,
                     state = screenState.value,
                     onScanClick = ::requestScan,
                     onRouteClick = ::toggleRoute,
                     onTargetNetworkChange = ::selectTargetNetwork,
+                    onArExit = ::stopArScan,
+                    onArPose = ::onArPose,
+                    onArStatus = ::onArStatus,
                     onOpenSession = ::openSavedSession,
                     onExportSession = ::exportSession,
                     onImportSession = ::launchImportSession
@@ -131,10 +151,13 @@ class MainActivity : ComponentActivity() {
         screenState.value = screenState.value.copy(hasPermission = hasLocationPermission())
         wifiScanner.register()
         motionSensors.register()
+        if (hasLocationPermission()) wifiScanner.requestScan()
     }
 
     override fun onStop() {
+        scanHandler.removeCallbacks(scanTicker)
         if (motionSensors.recording) motionSensors.stopRoute()
+        screenState.value = screenState.value.copy(isArMode = false)
         motionSensors.unregister()
         wifiScanner.unregister()
         super.onStop()
@@ -257,7 +280,29 @@ class MainActivity : ComponentActivity() {
 
     private fun selectTargetNetwork(ssid: String) {
         if (screenState.value.isRecording) return
+        preferences.edit().putString(PREF_TARGET_SSID, ssid).apply()
         screenState.value = screenState.value.copy(selectedNetworkSsid = ssid)
+    }
+
+    private fun onArPose(timestampNs: Long, worldX: Double, worldZ: Double) {
+        if (screenState.value.isArMode && screenState.value.isRecording) {
+            motionSensors.recordArPose(timestampNs, worldX, worldZ)
+        }
+    }
+
+    private fun onArStatus(message: String) {
+        if (screenState.value.arStatus != message) {
+            screenState.value = screenState.value.copy(arStatus = message)
+        }
+    }
+
+    private fun stopArScan() {
+        scanHandler.removeCallbacks(scanTicker)
+        if (motionSensors.recording) motionSensors.stopRoute()
+        screenState.value = screenState.value.copy(
+            isArMode = false,
+            arStatus = "Камера остановлена."
+        )
     }
 
     private fun requestScan() {
@@ -269,8 +314,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun toggleRoute() {
-        if (screenState.value.isRecording) {
-            motionSensors.stopRoute()
+        if (screenState.value.isRecording || screenState.value.isArMode) {
+            stopArScan()
             return
         }
 
@@ -291,10 +336,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun continueRouteStart() {
-        if (!hasActivityRecognitionPermission()) {
-            activityRecognitionPermission.launch(Manifest.permission.ACTIVITY_RECOGNITION)
-            return
-        }
         startRoute()
     }
 
@@ -315,14 +356,20 @@ class MainActivity : ComponentActivity() {
             routeSteps = 0,
             routeDistanceMeters = 0.0,
             unmappedWifiSamples = 0,
-            routeStatus = "Подготавливаем запись…"
+            routeStatus = "Подготавливаем ARCore…",
+            isArMode = true,
+            arStatus = "Запускаем камеру и AR-трекинг…"
         )
 
-        if (!motionSensors.startRoute()) return
+        if (!motionSensors.startArRoute()) {
+            screenState.value = screenState.value.copy(isArMode = false)
+            return
+        }
         isCreatingSession = true
-        // Ask Android for a fresh scan at the start; further results remain best-effort
-        // because the platform throttles active Wi-Fi scans.
+        // Start with an immediate request, then ask Android no more often than every 30 seconds.
         wifiScanner.requestScan()
+        scanHandler.removeCallbacks(scanTicker)
+        scanHandler.postDelayed(scanTicker, WIFI_SCAN_INTERVAL_MS)
 
         databaseExecutor.execute {
             runCatching { sessionDatabase.createSession() }
@@ -364,7 +411,10 @@ class MainActivity : ComponentActivity() {
                         isCreatingSession = false
                         if (isDestroyed || databaseExecutor.isShutdown) return@runOnUiThread
                         motionSensors.stopRoute()
+                        scanHandler.removeCallbacks(scanTicker)
                         screenState.value = screenState.value.copy(
+                            isArMode = false,
+                            arStatus = "AR-сканирование не запущено.",
                             routeStatus = "Не удалось создать сессию: ${error.javaClass.simpleName}"
                         )
                     }
@@ -564,5 +614,7 @@ class MainActivity : ComponentActivity() {
     private companion object {
         const val MAX_WIFI_MARKERS = 3_000
         const val ALL_NETWORKS = "*"
+        const val WIFI_SCAN_INTERVAL_MS = 30_000L
+        const val PREF_TARGET_SSID = "target_wifi_ssid"
     }
 }
