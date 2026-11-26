@@ -85,6 +85,11 @@ fun ArScannerScreen(
                         state.arStatus,
                         style = MaterialTheme.typography.labelMedium
                     )
+                    Text(
+                        state.status,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
