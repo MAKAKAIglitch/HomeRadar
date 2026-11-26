@@ -7,7 +7,6 @@ import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.os.Handler
 import android.os.Looper
-import android.view.Surface
 import com.google.ar.core.ArCoreApk
 import com.google.ar.core.Config
 import com.google.ar.core.Coordinates2d
@@ -30,9 +29,8 @@ class ArCoreCameraView(
     private val activity: Activity,
     onPose: (timestampNs: Long, worldX: Double, worldZ: Double) -> Unit,
     onStatus: (String) -> Unit
-) : GLSurfaceView(context), GLSurfaceView.Renderer {
+) : GLSurfaceView(context) {
 
-    private val mainHandler = Handler(Looper.getMainLooper())
     private val renderer = CameraRenderer(activity, onPose, onStatus)
     private var session: Session? = null
     private var installRequested = false
@@ -125,6 +123,11 @@ class ArCoreCameraView(
         fun setSession(value: Session?) {
             session = value
             boundSession = null
+            lastPoseTimestampNs = 0L
+        }
+
+        fun invalidateCameraTexture() {
+            boundSession = null
         }
 
         fun reportStatus(message: String) {
@@ -166,10 +169,13 @@ class ArCoreCameraView(
                     val timestamp = frame.timestamp
                     if (timestamp > 0L && timestamp - lastPoseTimestampNs >= POSE_CALLBACK_INTERVAL_NS) {
                         val translation = camera.pose.translation
+                        val worldX = translation[0].toDouble()
+                        val worldZ = translation[2].toDouble()
+                        // ARCore Frame timestamp has no guaranteed clock domain.
+                        // Use elapsedRealtime for association with Wi-Fi scan timestamps.
+                        val routeTimestampNs = SystemClock.elapsedRealtimeNanos()
                         lastPoseTimestampNs = timestamp
-                        handler.post {
-                            onPose(timestamp, translation[0].toDouble(), translation[2].toDouble())
-                        }
+                        handler.post { onPose(routeTimestampNs, worldX, worldZ) }
                     }
                     publishStatus("ARCore: трекинг активен")
                 } else {
