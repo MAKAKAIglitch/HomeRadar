@@ -38,10 +38,10 @@ fun ArScannerScreen(
         ALL_NETWORKS -> "Все обнаруженные сети"
         else -> state.selectedNetworkSsid
     }
-    val targetRows = if (state.selectedNetworkSsid == ALL_NETWORKS) {
+    val targetRows = if (selectedSsid == ALL_NETWORKS) {
         state.networks
     } else {
-        state.networks.filter { it.ssid == state.selectedNetworkSsid }
+        state.networks.filter { it.ssid == selectedSsid }
     }
     val bestSignal = targetRows.maxByOrNull { it.rssiDbm }?.rssiDbm
     val lifecycle = activity.lifecycle
