@@ -15,6 +15,8 @@ import android.os.Build
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
 
+const val ALL_NETWORKS = "*"
+
 data class WifiNetworkRow(
     val ssid: String,
     val bssid: String,
