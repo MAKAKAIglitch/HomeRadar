@@ -1,5 +1,7 @@
 package org.homeradar.app
 
+internal const val ALL_NETWORKS = "*"
+
 import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
