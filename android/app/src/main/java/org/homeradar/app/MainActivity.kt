@@ -23,6 +23,7 @@ class MainActivity : ComponentActivity() {
     private var persistedRoutePointCount = 0
     private var isCreatingSession = false
     private var pendingExportSessionId: Long? = null
+    private var pendingRouteStartAfterLocation = false
 
     private val exportDocument = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/zip")
@@ -46,7 +47,16 @@ class MainActivity : ComponentActivity() {
             status = if (granted) "Разрешение получено. Запрашиваем сканирование…" else
                 "Для чтения результатов Wi-Fi Android требует разрешение на геолокацию."
         )
-        if (granted) wifiScanner.requestScan()
+        if (granted) {
+            if (pendingRouteStartAfterLocation) {
+                pendingRouteStartAfterLocation = false
+                requestCameraAndContinue()
+            } else {
+                wifiScanner.requestScan()
+            }
+        } else {
+            pendingRouteStartAfterLocation = false
+        }
     }
 
     private val cameraPermission = registerForActivityResult(
@@ -246,6 +256,7 @@ class MainActivity : ComponentActivity() {
             ) == PackageManager.PERMISSION_GRANTED
 
     private fun selectTargetNetwork(ssid: String) {
+        if (screenState.value.isRecording) return
         screenState.value = screenState.value.copy(selectedNetworkSsid = ssid)
     }
 
@@ -263,6 +274,15 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+        if (!hasLocationPermission()) {
+            pendingRouteStartAfterLocation = true
+            locationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            return
+        }
+        requestCameraAndContinue()
+    }
+
+    private fun requestCameraAndContinue() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             cameraPermission.launch(Manifest.permission.CAMERA)
             return
@@ -300,6 +320,9 @@ class MainActivity : ComponentActivity() {
 
         if (!motionSensors.startRoute()) return
         isCreatingSession = true
+        // Ask Android for a fresh scan at the start; further results remain best-effort
+        // because the platform throttles active Wi-Fi scans.
+        wifiScanner.requestScan()
 
         databaseExecutor.execute {
             runCatching { sessionDatabase.createSession() }
