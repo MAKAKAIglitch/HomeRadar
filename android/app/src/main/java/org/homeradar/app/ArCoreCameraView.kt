@@ -112,6 +112,7 @@ class ArCoreCameraView(
         private var surfaceWidth = 0
         private var surfaceHeight = 0
         private var lastRotation = -1
+        @Volatile private var geometrySession: Session? = null
         private var boundSession: Session? = null
         private var lastPoseTimestampNs = 0L
         private var lastStatus = ""
@@ -123,6 +124,7 @@ class ArCoreCameraView(
 
         fun setSession(value: Session?) {
             session = value
+            geometrySession = null
             boundSession = null
             lastPoseTimestampNs = 0L
         }
@@ -217,10 +219,14 @@ class ArCoreCameraView(
 
         private fun updateDisplayGeometry() {
             if (surfaceWidth <= 0 || surfaceHeight <= 0) return
+            val activeSession = session ?: return
             val rotation = activity.windowManager.defaultDisplay.rotation
-            if (rotation == lastRotation) return
-            session?.setDisplayGeometry(rotation, surfaceWidth, surfaceHeight)
+            // Surface creation can happen before ARCore Session creation. Track the
+            // session as well as display rotation so the first real frame always gets geometry.
+            if (rotation == lastRotation && geometrySession === activeSession) return
+            activeSession.setDisplayGeometry(rotation, surfaceWidth, surfaceHeight)
             lastRotation = rotation
+            geometrySession = activeSession
         }
 
         private fun publishStatus(message: String) {
