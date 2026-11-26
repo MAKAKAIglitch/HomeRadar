@@ -36,6 +36,7 @@ class ArCoreCameraView(
     private val renderer = CameraRenderer(activity, onPose, onStatus)
     private var session: Session? = null
     private var installRequested = false
+    private var cameraResumed = false
     private var destroyed = false
 
     init {
@@ -47,7 +48,7 @@ class ArCoreCameraView(
     }
 
     fun resumeCamera() {
-        if (destroyed) return
+        if (destroyed || cameraResumed) return
         try {
             if (session == null) {
                 val installStatus = ArCoreApk.getInstance()
@@ -70,8 +71,10 @@ class ArCoreCameraView(
 
             session?.resume()
             onResume()
+            cameraResumed = true
             renderer.reportStatus("Камера ARCore запущена. Ищем устойчивый трекинг…")
         } catch (error: Exception) {
+            cameraResumed = false
             renderer.reportStatus(
                 "Не удалось запустить ARCore: ${error.message ?: error.javaClass.simpleName}"
             )
@@ -79,6 +82,8 @@ class ArCoreCameraView(
     }
 
     fun pauseCamera() {
+        if (!cameraResumed) return
+        cameraResumed = false
         onPause()
         runCatching { session?.pause() }
     }
