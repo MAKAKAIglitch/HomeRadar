@@ -488,6 +488,7 @@ private fun WifiScannerCard(
                 options.forEach { option ->
                     DropdownMenuItem(
                         text = { Text(if (option == "*") "Все сети" else option) },
+                        enabled = !state.isRecording,
                         onClick = {
                             menuExpanded.value = false
                             onTargetNetworkChange(option)
