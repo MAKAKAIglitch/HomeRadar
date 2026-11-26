@@ -17,6 +17,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -24,6 +26,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +46,7 @@ fun HomeRadarScreen(
     state: WifiScanUiState,
     onScanClick: () -> Unit,
     onRouteClick: () -> Unit,
+    onTargetNetworkChange: (String) -> Unit,
     onOpenSession: (Long) -> Unit,
     onExportSession: (Long) -> Unit,
     onImportSession: () -> Unit
@@ -80,7 +85,7 @@ fun HomeRadarScreen(
                 SavedSessionsCard(state, onOpenSession, onExportSession, onImportSession)
             }
             item {
-                WifiScannerCard(state, onScanClick)
+                WifiScannerCard(state, onScanClick, onTargetNetworkChange)
             }
             item {
                 MotionDiagnosticsCard(state)
@@ -187,8 +192,17 @@ private fun RouteControlCard(
                     )
                 }
             }
+            if (state.isRecording) {
+                Text("Камера активна", style = MaterialTheme.typography.titleSmall)
+                CameraPreview(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(260.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                )
+            }
             Text(
-                "Это пока PDR-оценка: длина шага принята за 0,68 м. Ошибка накапливается; камера и AR-трекинг ещё не подключены.",
+                "Камера показывает пространство во время прохода. Позиция пока рассчитывается по шагам и компасу (PDR, шаг ≈ 0,68 м); полноценный ARCore visual-inertial tracking ещё не подключён.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -442,13 +456,42 @@ private fun SavedSessionsCard(
 @Composable
 private fun WifiScannerCard(
     state: WifiScanUiState,
-    onScanClick: () -> Unit
+    onScanClick: () -> Unit,
+    onTargetNetworkChange: (String) -> Unit
 ) {
+    val menuExpanded = remember { mutableStateOf(false) }
+    val options = (listOfNotNull(state.connectedSsid) +
+        state.networks.map { it.ssid }.filter { it.isNotBlank() } +
+        listOf("*")).distinct()
+    val selected = state.selectedNetworkSsid ?: state.connectedSsid ?: "*"
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            Text("Целевая Wi-Fi-сеть", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "По умолчанию выбрана сеть, к которой подключён телефон. Для неё будут записываться точки сигнала; можно выбрать другую найденную сеть.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedButton(onClick = { menuExpanded.value = true }) {
+                Text("Сеть: " + if (selected == "*") "Все сети" else selected)
+            }
+            DropdownMenu(
+                expanded = menuExpanded.value,
+                onDismissRequest = { menuExpanded.value = false }
+            ) {
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(if (option == "*") "Все сети" else option) },
+                        onClick = {
+                            menuExpanded.value = false
+                            onTargetNetworkChange(option)
+                        }
+                    )
+                }
+            }
             Text("Wi-Fi Scanner", style = MaterialTheme.typography.titleMedium)
             Text(
                 state.status,
