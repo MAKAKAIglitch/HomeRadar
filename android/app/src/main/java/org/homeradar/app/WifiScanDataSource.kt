@@ -6,7 +6,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.wifi.ScanResult
+import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.SystemClock
@@ -33,7 +36,8 @@ data class WifiScanSnapshot(
     val status: String,
     val networks: List<WifiNetworkRow>,
     val resultsFresh: Boolean,
-    val receivedAtNs: Long
+    val receivedAtNs: Long,
+    val connectedSsid: String? = null
 )
 
 data class WifiScanUiState(
@@ -55,7 +59,9 @@ data class WifiScanUiState(
     val unmappedWifiSamples: Int = 0,
     val savedSessions: List<SavedSessionSummary> = emptyList(),
     val selectedSessionId: Long? = null,
-    val storageStatus: String? = null
+    val storageStatus: String? = null,
+    val connectedSsid: String? = null,
+    val selectedNetworkSsid: String? = null
 )
 
 class WifiScanDataSource(
@@ -143,11 +149,34 @@ class WifiScanDataSource(
                     },
                     networks = rows,
                     resultsFresh = updated,
-                    receivedAtNs = receivedAt
+                    receivedAtNs = receivedAt,
+                    connectedSsid = currentConnectedSsid()
                 )
             )
         } catch (security: SecurityException) {
             emitStatus("Android запретил чтение результатов. Проверь разрешение и настройки геолокации.")
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun currentConnectedSsid(): String? {
+        return try {
+            val connectivity = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val network = connectivity.activeNetwork
+            val capabilities = network?.let(connectivity::getNetworkCapabilities)
+            val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                if (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) != true) return null
+                capabilities.transportInfo as? WifiInfo
+            } else {
+                wifiManager.connectionInfo
+            }
+            info?.ssid
+                ?.takeIf { it.isNotBlank() && it != WifiManager.UNKNOWN_SSID }
+                ?.removeSurrounding("\"")
+        } catch (_: SecurityException) {
+            null
+        } catch (_: RuntimeException) {
+            null
         }
     }
 
@@ -172,7 +201,8 @@ class WifiScanDataSource(
                 status = message,
                 networks = lastRows,
                 resultsFresh = false,
-                receivedAtNs = SystemClock.elapsedRealtimeNanos()
+                receivedAtNs = SystemClock.elapsedRealtimeNanos(),
+                connectedSsid = currentConnectedSsid()
             )
         )
     }
