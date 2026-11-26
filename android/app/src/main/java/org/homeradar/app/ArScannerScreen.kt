@@ -33,10 +33,11 @@ fun ArScannerScreen(
     onStatus: (String) -> Unit
 ) {
     val cameraViewState = remember { mutableStateOf<ArCoreCameraView?>(null) }
-    val target = when (state.selectedNetworkSsid) {
-        null -> state.connectedSsid ?: "Сеть не выбрана"
+    val selectedSsid = state.selectedNetworkSsid ?: state.connectedSsid
+    val target = when (selectedSsid) {
+        null -> "Сеть не выбрана"
         ALL_NETWORKS -> "Все обнаруженные сети"
-        else -> state.selectedNetworkSsid
+        else -> selectedSsid
     }
     val targetRows = if (selectedSsid == ALL_NETWORKS) {
         state.networks
