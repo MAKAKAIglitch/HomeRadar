@@ -1,5 +1,6 @@
 package org.homeradar.app
 
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -43,14 +44,29 @@ import kotlin.math.min
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeRadarScreen(
+    activity: ComponentActivity,
     state: WifiScanUiState,
     onScanClick: () -> Unit,
     onRouteClick: () -> Unit,
     onTargetNetworkChange: (String) -> Unit,
+    onArExit: () -> Unit,
+    onArPose: (Long, Double, Double) -> Unit,
+    onArStatus: (String) -> Unit,
     onOpenSession: (Long) -> Unit,
     onExportSession: (Long) -> Unit,
     onImportSession: () -> Unit
 ) {
+    if (state.isArMode) {
+        ArScannerScreen(
+            activity = activity,
+            state = state,
+            onExit = onArExit,
+            onPose = onArPose,
+            onStatus = onArStatus
+        )
+        return
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -152,7 +168,7 @@ private fun RouteControlCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Запись прохода", style = MaterialTheme.typography.titleLarge)
+                Text("Wi-Fi-картирование", style = MaterialTheme.typography.titleLarge)
                 Text(
                     if (state.isRecording) "Идёт запись" else "Остановлено",
                     style = MaterialTheme.typography.labelMedium,
@@ -178,7 +194,7 @@ private fun RouteControlCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Button(onClick = onRouteClick) {
-                    Text(if (state.isRecording) "Завершить проход" else "Начать проход")
+                    Text(if (state.isRecording) "Завершить сканирование" else "Начать сканирование")
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
@@ -192,17 +208,16 @@ private fun RouteControlCard(
                     )
                 }
             }
-            if (state.isRecording) {
-                Text("Камера активна", style = MaterialTheme.typography.titleSmall)
-                CameraPreview(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(260.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                )
-            }
             Text(
-                "Камера показывает пространство во время прохода. Позиция пока рассчитывается по шагам и компасу (PDR, шаг ≈ 0,68 м); полноценный ARCore visual-inertial tracking ещё не подключён.",
+                state.selectedNetworkSsid?.let {
+                    if (it == ALL_NETWORKS) "Цель: все обнаруженные сети" else "Целевая сеть: $it"
+                } ?: state.connectedSsid?.let { "Целевая сеть: $it" }
+                    ?: "Целевая сеть не выбрана",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                "При запуске откроется камера ARCore. Положение берётся из визуально-инерциального трекинга, а Wi-Fi-замеры привязываются к выбранной сети.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
