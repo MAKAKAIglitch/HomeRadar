@@ -478,7 +478,12 @@ private fun WifiScannerCard(
     val options = (listOfNotNull(state.connectedSsid) +
         state.networks.map { it.ssid }.filter { it.isNotBlank() } +
         listOf("*")).distinct()
-    val selected = state.selectedNetworkSsid ?: state.connectedSsid ?: "*"
+    val selected = state.selectedNetworkSsid ?: state.connectedSsid
+    val selectedLabel = when (selected) {
+        null -> "Не определена — выбери сеть"
+        ALL_NETWORKS -> "Все сети"
+        else -> selected
+    }
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -486,7 +491,11 @@ private fun WifiScannerCard(
         ) {
             Text("Целевая Wi-Fi-сеть", style = MaterialTheme.typography.titleMedium)
             Text(
-                "По умолчанию выбрана сеть, к которой подключён телефон. Для неё будут записываться точки сигнала; можно выбрать другую найденную сеть.",
+                if (state.connectedSsid != null) {
+                    "По умолчанию выбрана подключённая сеть. Можно переключить цель на другую найденную сеть или на все сети."
+                } else {
+                    "Android пока не сообщил SSID текущего подключения. Обнови список Wi-Fi и выбери найденную сеть вручную."
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -494,7 +503,7 @@ private fun WifiScannerCard(
                 onClick = { menuExpanded.value = true },
                 enabled = !state.isRecording
             ) {
-                Text("Сеть: " + if (selected == "*") "Все сети" else selected)
+                Text("Сеть: $selectedLabel")
             }
             DropdownMenu(
                 expanded = menuExpanded.value,
