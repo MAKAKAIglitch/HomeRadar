@@ -19,7 +19,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -34,8 +33,16 @@ fun ArScannerScreen(
     onStatus: (String) -> Unit
 ) {
     val cameraViewState = remember { mutableStateOf<ArCoreCameraView?>(null) }
-    val target = state.selectedNetworkSsid ?: "Сеть не выбрана"
-    val targetRows = state.networks.filter { it.ssid == state.selectedNetworkSsid }
+    val target = when (state.selectedNetworkSsid) {
+        null -> state.connectedSsid ?: "Сеть не выбрана"
+        ALL_NETWORKS -> "Все обнаруженные сети"
+        else -> state.selectedNetworkSsid
+    }
+    val targetRows = if (state.selectedNetworkSsid == ALL_NETWORKS) {
+        state.networks
+    } else {
+        state.networks.filter { it.ssid == state.selectedNetworkSsid }
+    }
     val bestSignal = targetRows.maxByOrNull { it.rssiDbm }?.rssiDbm
     val lifecycle = activity.lifecycle
 
